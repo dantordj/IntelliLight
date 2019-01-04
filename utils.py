@@ -16,9 +16,13 @@ import math
 import matplotlib.pyplot as plt
 from env_name import env_name
 
+use_gui = False
+
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
-    sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
+
+    if use_gui:
+        sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
 
 else:
     sumo_binary_path = '/usr/local/bin/sumo'
@@ -30,17 +34,46 @@ listLanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'e
              'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
 # assgin sumo code to each phase
+
+wgreen = "WGREEN"
+ngreen = "NGREEN"
+yellow_wn = "YELLOW_WN"
+yellow_nw = "YELLOW_NW"
+
 phases = {
-    "WGREEN": "grrr gGGG grrr gGGG".replace(" ", ""),  # index 0
-    "NGREEN": "gGGG grrr gGGG grrr".replace(" ", "")  # index 1
+    wgreen: "grrr gGGG grrr gGGG".replace(" ", ""),  # index 0
+    ngreen: "gGGG grrr gGGG grrr".replace(" ", "")  # index 1
 }
 
 
 def get_id_phase(phase):
-    if phase == phases["WGREEN"]:
-        return "WGREEN"
-    if phase == phases["NGREEN"]:
-        return "NGREEN"
+    if phase == phases[wgreen]:
+        return wgreen
+    if phase == phases[ngreen]:
+        return ngreen
+
+
+phase_decoder = {
+    0: wgreen,
+    1: yellow_wn,
+    2: ngreen,
+    3: yellow_nw
+}
+
+phase_encoder = {
+    wgreen: 0,
+    yellow_wn: 1,
+    ngreen: 2,
+    yellow_nw: 3
+}
+
+
+def get_phase():
+    return phase_decoder[traci.trafficlight.getPhase("node0")]
+
+
+def set_phase(phase):
+    traci.trafficlight.setPhase("node0", phase_encoder[phase])
 
 
 """ Functions to interact with sumo """
@@ -78,7 +111,8 @@ def start_sumo(traffic):
     """ Start sumo, 3 config possibles"""
     trafic_files = {"alternate": "cross.2phases_rou1_switch_rou0.xml",
                     "equal": "cross.2phases_rou01_equal_300s.xml",
-                    "unequal": "cross.2phases_rou01_unequal_5_300s.xml"
+                    "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
+                    "equal_big": "cross.2phases_rou01_equal_300s_big.xml"
                     }
     file = trafic_files[traffic]
     set_traffic_file(
@@ -97,9 +131,6 @@ def start_sumo(traffic):
 
 def get_state_sumo():
     """ Put here what we need to define the state. For now only the number of vehicles by lines"""
-
-    traci.simulationStep()
-
     vehicle_roads = Counter()
 
     vehicle_id_list = traci.vehicle.getIDList()
@@ -111,13 +142,13 @@ def get_state_sumo():
 
 def is_blocked(lane, phase):
     """ return True if the line is blocked"""
-    if "edge3" in lane and phase == "WGREEN":
+    if "edge3" in lane and phase == wgreen:
         return True
-    if "edge4" in lane and phase == "WGREEN":
+    if "edge4" in lane and phase == wgreen:
         return True
-    if "edge1" in lane and phase == "NGREEN":
+    if "edge1" in lane and phase == ngreen:
         return True
-    if "edge2" in lane and phase == "NGREEN":
+    if "edge2" in lane and phase == ngreen:
         return True
     return False
 
@@ -247,13 +278,13 @@ class sumoEnv():
 
     def __init__(self):
         self.vehicle_dict = {}
-        self.update_state()
-        self.n_states = 4 ** 4 * 2
+        # self.n_states = (4 ** 4) * 2
         self.n_actions = 2
 
+    """
     def encode_state(self):
-        """assign an integer between 1 and 511 to each state"""
-        phase = int(self.phase == "WGREEN")
+        # assign an integer between 1 and 511 to each state
+        phase = int(self.phase == wgreen)
         state = np.array([0, 0, 0, 0])
 
         for line, num_vehicles in self.state_sumo.items():
@@ -274,9 +305,12 @@ class sumoEnv():
             else:
                 state[i] = 3
 
-        s = phase + np.dot(state, np.array([2, 4 * 2, 4 ** 2 * 2, 4 ** 3 * 2]))
+        # s = phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
         return s
+        
+    """
 
+    """
     def update_state(self):
 
         self.state_sumo = get_state_sumo()
@@ -284,34 +318,236 @@ class sumoEnv():
         self.vehicle_dict = update_vehicles_state(self.vehicle_dict)
         phase = traci.trafficlights.getPhase("node0")
 
-        if phase == 0:  # WGREEN
-            self.phase = "WGREEN"
+        if phase == 0:
+            self.phase = wgreen
         elif phase == 2:
-            self.phase = "NGREEN"
+            self.phase = ngreen
         else:
-            self.phase = "YELLOW"
+            self.phase = yellow
+    """
 
     def get_reward(self, blocked_only=True):
         # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
-        w_time = get_overall_waiting_time(listLanes)
+        # w_time = get_overall_waiting_time(listLanes)
 
-        return - w_time
+        reward = 0
+        vehicle_entering = get_vehicle_id_entering()
+        for id_ in vehicle_entering:
+            reward += traci.vehicle.getSpeed(id_) - traci.lane.getMaxSpeed(traci.vehicle.getLaneID(id_))
+
+        return reward
 
     def step(self, change=True):
 
-        # if change and self.phase in []
+        if change and get_phase() in [yellow_wn, yellow_nw]:
+            print("cant change phase since the light is already yellow")
 
         if change:
-            if self.phase == "WGREEN":
-                # traci.trafficlights.setRedYellowGreenState("node0", phases['NGREEN'])
-                traci.trafficlight.setPhase("node0", 1)
+            if get_phase() == wgreen:
+                set_phase(yellow_wn)
 
-            elif self.phase == "NGREEN":
-                # traci.trafficlights.setRedYellowGreenState("node0", phases['WGREEN'])
-                traci.trafficlight.setPhase("node0", 3)
+            elif get_phase() == ngreen:
+                set_phase(yellow_nw)
 
-        self.update_state()
-        return self.encode_state(), self.get_reward()
+        traci.simulationStep()
+
+
+class ConstantAgent(object):
+    def __init__(self, period=30):
+        self.period = period
+        self.count = 0
+
+    def choose_action(self):
+        self.count += 1
+
+        if (self.count > self.period) and get_phase() in [wgreen, ngreen]:
+            self.count = 0
+            return True
+        return False
+
+    def feedback(self, reward):
+        pass
+
+
+class SimpleAgent(object):
+    def __init__(self, factor):
+        self.factor = factor
+
+    def choose_action(self):
+        state = get_state_sumo()
+
+        vertical_cars = 0
+        horizontal_cars = 0
+
+        for line, num_vehicles in state.items():
+            try:
+                i = int(line[4])
+            except:
+                continue
+            if i in [3, 4]:
+                vertical_cars += num_vehicles
+            elif i in [1, 2]:
+                horizontal_cars += num_vehicles
+
+        change = False
+
+        if (vertical_cars > self.factor * horizontal_cars) and get_phase() == wgreen:
+            change = True
+
+        if (horizontal_cars > self.factor * vertical_cars) and get_phase() == ngreen:
+            change = True
+
+        return change
+
+    def feedback(self, reward):
+        pass
+
+
+class QLearningAgent(object):
+
+    def __init__(self):
+        self.t = 0
+        self.n_states = (4 ** 4) * 2
+        self.Q = np.zeros((self.n_states, 2))
+        self.T = np.zeros((self.n_states, 2))
+        self.gamma = 0.99
+        self.epsilon = 0.01
+        self.beta = 0.5
+        self.action = 0
+        self.last_state = 0
+
+        self.acc_reward = 0
+        self.acc_count = 0
+        self.visited_states = np.zeros(self.n_states)
+
+    def load(self, name):
+        path = os.path.join("saved_agents", name)
+        assert os.path.exists(path), "no such saved agent"
+
+        self.Q = np.loadtxt(os.path.join(path, "Q.txt"))
+        self.visited_states = np.loadtxt(os.path.join(path, "visited_states.txt"))
+        self.T = np.loadtxt(os.path.join(path, "T.txt"))
+
+    def encode_state(self):
+        # assign an integer between 1 and 511 to each state
+        phase = get_phase() == wgreen
+        state = np.array([0, 0, 0, 0])
+
+        for line, num_vehicles in get_state_sumo().items():
+            try:
+                i = int(line[4]) - 1
+                if i < 0:
+                    continue
+            except:
+                continue
+            if num_vehicles < 3:
+                state[i] = 0
+            elif num_vehicles < 5:
+                state[i] = 1
+            elif num_vehicles < 7:
+                state[i] = 2
+            else:
+                state[i] = 3
+
+        s = phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
+        return s
+
+    def choose_action(self):
+        state = self.encode_state()
+
+        if get_phase() in [yellow_wn, yellow_nw]:
+            return 0
+
+        self.last_state = state
+
+        if np.random.uniform(0, 1) < self.epsilon:
+            action = np.random.choice([0, 1])
+        else:
+            action = np.argmax(self.Q[state])
+
+        self.action = action
+
+        if action:
+            self.acc_count = 0
+            self.acc_reward = 0
+
+        self.T[state, action] += 1
+
+        return action
+
+    def feedback(self, reward):
+        next_state = self.encode_state()
+
+        if next_state in [yellow_nw, yellow_wn]:
+            self.acc_reward += reward * (self.gamma ** self.acc_count)
+            self.acc_count += 1
+            return
+
+        q = self.Q[self.last_state, self.action]
+        q_next = np.max(self.Q[next_state])
+
+        alpha = (1. / self.T[self.last_state, self.action]) ** self.beta
+
+        q = (1 - alpha) * q
+
+        if self.acc_count > 0:
+            self.acc_reward += reward * (self.gamma ** self.acc_count)
+            q += self.acc_reward
+            q += self.gamma ** (self.acc_count + 1) * q_next
+            self.acc_count = 0
+            self.acc_reward = 0
+        else:
+            q += reward + self.gamma * q_next
+
+        self.Q[self.last_state, self.action] = q
+
+        self.visited_states[self.last_state] += 1
+
+        return
+
+    def save(self, name):
+        path = os.path.join("saved_agents", name)
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        np.savetxt(os.path.join(path, "Q.txt"), self.Q)
+        np.savetxt(os.path.join(path, "visited_states.txt"), self.visited_states)
+        np.savetxt(os.path.join(path, "T.txt"), self.T)
+
+
+def run_agent(agent, max_t=1000, flow_type="unequal"):
+    start_sumo(flow_type)
+    env = sumoEnv()
+    reward = 0
+    n_switches = 0
+
+    for t in range(max_t):
+        action = agent.choose_action()
+        n_switches += int(action)
+        env.step(action)
+        reward += env.get_reward()
+        agent.feedback(reward)
+
+        if use_gui:
+            time.sleep(0.3)
+
+    end_sumo()
+
+    reward /= max_t
+    print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+    print("reward: ", reward)
+    print("n_switches: ", n_switches)
+    return reward, n_switches
+
+
+def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
+    rewards = []
+
+    for i in range(epochs):
+        reward, n_switches = run_agent(agent, max_t=max_t, flow_type=flow_type)
+        rewards.append(reward)
+
+    return rewards
 
 
 def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
@@ -324,7 +560,6 @@ def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
     end_sumo()
 
     rewards = []
-    visited_states = np.zeros(env.n_states)
     for i in range(n):
         print("i = :", i)
         t = 0
@@ -336,6 +571,7 @@ def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
         reward = 0
         while t <= t_max:
             t += 1
+
             if np.random.uniform(0, 1) < epsilon:
                 a = np.random.choice([0, 1])
             else:
@@ -395,43 +631,20 @@ def simple_rule2(t_max=1000, display_freq=1e12, factor=3):
 
         change = False
 
-        if (vertical_cars > factor * horizontal_cars) and env.phase == "WGREEN":
+        if (vertical_cars > factor * horizontal_cars) and env.phase == wgreen:
             change = True
 
-        if (horizontal_cars > factor * vertical_cars) and env.phase == "NGREEN":
-            change = True
-
-        if t % display_freq == 0:
-            plotcurrenttrafic()
-
-        next_s, r = env.step(change=change)
-        reward += r
-
-    end_sumo()
-
-    return reward
-
-
-def constant_rule(t_max=1000, display_freq=1e12, period=100):
-
-    t = 0
-    start_sumo("unequal")
-    env = sumoEnv()
-    reward = 0
-
-    while t <= t_max:
-        t += 1
-
-        change = False
-        if t % period == 0:
+        if (horizontal_cars > factor * vertical_cars) and env.phase == ngreen:
             change = True
 
         if t % display_freq == 0:
             plotcurrenttrafic()
 
+        if use_gui:
+            time.sleep(0.3)
+
         next_s, r = env.step(change=change)
         reward += r
-        time.sleep(0.3)
 
     end_sumo()
 

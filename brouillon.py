@@ -1,22 +1,43 @@
-from utils import q_learning, simple_rule2, constant_rule
+from utils import q_learning, simple_rule2, ConstantAgent, SimpleAgent, run_agent, QLearningAgent, train_agent
 import matplotlib.pyplot as plt
 
-n_tests = 10
-
-for period in [40, 60, 80, 100, 120, 200]:
-    avg_reward = constant_rule(t_max=1000, display_freq=1e12, period=period)
-    print("avg reward simple rule, period = " + str(period) + ": ", avg_reward)
-
-pi, rewards, visited_states = q_learning(n=n_tests, t_max=1000, display_freq=1e12, epsilon=0)
-
-for factor in [1, 2, 3, 4]:
-    avg_reward = simple_rule2(t_max=1000, display_freq=1e12, factor=factor)
-    print("avg reward simple rule, factor = " + str(factor) + ": ", avg_reward)
-
-
-# print("avg reward: ", avg_reward)
-plt.plot(range(n_tests), rewards)
+flow_type = "equal_big"
+agent = QLearningAgent()
+epochs = 10
+rewards = train_agent(agent, flow_type=flow_type, epochs=epochs)
+agent.save("q_learning")
+plt.scatter(range(epochs), rewards)
 plt.show()
 
-#         <phase duration="6" state="grrrgyyygrrrgyyy"/>
-#         <phase duration="6" state="gyyygGGGgyyygGGG"/>
+
+n_tests = 10
+factors = [2, 3, 4, 5]
+flow_type = "equal_big"
+rewards = []
+for factor in factors:
+    agent = SimpleAgent(factor=factor)
+    reward, n_switches = run_agent(agent, flow_type=flow_type)
+    rewards.append(reward)
+
+    print("period = ", factor)
+    print("reward:", reward)
+    print("n_switches:", n_switches)
+    print()
+
+plt.scatter(factors, rewards)
+plt.show()
+
+rewards = []
+periods = [10, 20, 40, 60, 80, 100, 120, 200]
+for period in periods:
+    agent = ConstantAgent(period=period)
+    reward, n_switches = run_agent(agent, flow_type=flow_type)
+    rewards.append(reward)
+
+    print("period = ", period)
+    print("reward:", reward)
+    print("n_switches:", n_switches)
+    print()
+
+plt.scatter(periods, rewards)
+plt.show()

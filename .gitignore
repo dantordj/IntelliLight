@@ -40,3 +40,4 @@ data/Fixedtime*
 .ipynb_checkpoints
 data/one_run/cross.sumocfg
 /env_name.py
+/saved_agents/
