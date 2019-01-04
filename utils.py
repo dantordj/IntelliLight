@@ -287,20 +287,12 @@ class sumoEnv():
             self.phase = "NGREEN"
 
     def get_reward(self, blocked_only=True):
-        queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
+        # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
         w_time = get_overall_waiting_time(listLanes)
-
-        if (w_time > 0 or queue > 0) and False:
-            print("waooou")
-            print("queue: ", queue)
-            print("w_time: ", queue)
-            print("")
 
         return - w_time
 
     def step(self, change=True):
-        WGREEN = "grrr gGGG grrr gGGG".replace(" ", "")
-        NGREEN = "gGGG grrr gGGG grrr".replace(" ", "")
 
         if change:
             if self.phase == "WGREEN":
@@ -312,10 +304,7 @@ class sumoEnv():
         return self.encode_state(), self.get_reward()
 
 
-N_test = 200
-
-
-def q_learning(n=N_test, epsilon=0.01, beta=0.55, t_max=1000):
+def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
     start_sumo("unequal")
     env = sumoEnv()
     Q = np.zeros((env.n_states, 2))
@@ -344,7 +333,6 @@ def q_learning(n=N_test, epsilon=0.01, beta=0.55, t_max=1000):
             T[s, a] += 1
             next_s, r = env.step(a)
 
-            # time.sleep(1./fps)
             q = Q[s, a]
             q_next = np.max(Q[next_s])
             alpha = (1. / T[s, a]) ** beta
@@ -353,117 +341,85 @@ def q_learning(n=N_test, epsilon=0.01, beta=0.55, t_max=1000):
 
             s = next_s
             visited_states[s] += 1
-            reward += r * (gamma ** (t - 1))
+            reward += r
+
+            if t % display_freq == 0:
+                plotcurrenttrafic()
 
         print("reward = ", reward)
-        print("visited_states: ", visited_states)
 
-        # plotcurrenttrafic()
         end_sumo()
         rewards += [reward]
-    print(rewards)
+    print("rewards: ", rewards)
 
     pi = np.argmax(Q, axis=1)
     return pi, rewards, visited_states
 
 
-def simple_rule2(n=N_test, t_max=1000):
+def simple_rule2(t_max=1000, display_freq=1e12, factor=3):
+
+    t = 0
     start_sumo("unequal")
     env = sumoEnv()
-    Q = np.zeros((env.n_states, 2))
-    T = np.zeros((env.n_states, 2))
-    gamma = 0.99
+    reward = 0
+
+    while t <= t_max:
+        t += 1
+
+        vertical_cars = 0
+        horizontal_cars = 0
+
+        for line, num_vehicles in env.state_sumo.items():
+            try:
+                i = int(line[4])
+                if i <= 0:
+                    continue
+            except:
+                continue
+            if i in [3, 4]:
+                vertical_cars += num_vehicles
+            else:
+                horizontal_cars += num_vehicles
+
+        change = False
+
+        if (vertical_cars > factor * horizontal_cars) and env.phase == "WGREEN":
+            change = True
+
+        if (horizontal_cars > factor * vertical_cars) and env.phase == "NGREEN":
+            change = True
+
+        if t % display_freq == 0:
+            plotcurrenttrafic()
+
+        next_s, r = env.step(change=change)
+        reward += r
 
     end_sumo()
 
-    rewards = []
-    visited_states = np.zeros(env.n_states)
-    for i in range(n):
-        print("i = :", i)
-        t = 0
-        start_sumo("unequal")
-        env = sumoEnv()
-        s = env.encode_state()
-        visited_states[s] += 1
-
-        reward = 0
-        while t <= t_max:
-            t += 1
-
-            phase = env.phase
-            state = np.array([0, 0, 0, 0])
-
-            vertical_cars = 0
-            horizontal_cars = 0
-
-            for line, num_vehicles in env.state_sumo.items():
-                # integer for the axis
-                try:
-                    i = int(line[4]) - 1
-                    if i < 0:
-                        # line 0, à priori on doit pas la considérer
-                        continue
-                except:
-                    continue
-
-                if i in [1, 4]:
-                    vertical_cars += num_vehicles
-                else:
-                    horizontal_cars += num_vehicles
-
-            change = False
-
-            if (vertical_cars > 3 * horizontal_cars) and phase == "WGREEN":
-                change = True
-
-            if (horizontal_cars > 3 * vertical_cars) and phase == "NGREEN":
-                change = True
-
-            if t % 100 == 0:
-                print("t: ", t)
-                print("vertical_cars: ", vertical_cars)
-                print("horizontal_cars: ", horizontal_cars)
-                print("phase: ", phase)
-                plotcurrenttrafic()
-                print()
-
-            if change:
-                print("t: ", t)
-                print("vertical_cars: ", vertical_cars)
-                print("horizontal_cars: ", horizontal_cars)
-                print("phase: ", phase)
-                print()
-                print()
-
-            next_s, r = env.step(change=change)
-            reward += r * (gamma ** (t - 1))
-
-        print("reward = ", reward)
-
-        end_sumo()
-        rewards += [reward]
-    print(rewards)
-
-    pi = np.argmax(Q, axis=1)
-    return pi, rewards, visited_states
+    return reward
 
 
+def constant_rule(t_max=1000, display_freq=1e12, period=100):
 
-def simple_rule(length_max=10, N=5000):
-    """ Try simple rule which change the lights based only on the queue lenght"""
+    t = 0
     start_sumo("unequal")
     env = sumoEnv()
-    r = env.take_action(change=False)
-    rewards = []
-    for i in range(N):
-        change = (r <= -length_max)
+    reward = 0
 
-        if change:
-            print(r, "Changing state")
+    while t <= t_max:
+        t += 1
 
-        r = env.step(change=change)
-        rewards += [r]
-        if i % 199 == 0:
+        change = False
+        if t % period == 0:
+            change = True
+
+        if t % display_freq == 0:
             plotcurrenttrafic()
 
-    plt.plot(range(N), rewards)
+        next_s, r = env.step(change=change)
+        reward += r
+
+    end_sumo()
+
+    return reward
