@@ -37,4 +37,5 @@ data/SOTL*
 
 conf/Fixedtime*
 data/Fixedtime*
-
+.ipynb_checkpoints
+data/one_run/cross.sumocfg
