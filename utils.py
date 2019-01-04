@@ -18,6 +18,8 @@ from env_name import env_name
 
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
+    sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
+
 else:
     sumo_binary_path = '/usr/local/bin/sumo'
 
@@ -345,6 +347,8 @@ def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
 
             if t % display_freq == 0:
                 plotcurrenttrafic()
+
+            time.sleep(0.5)
 
         print("reward = ", reward)
 
