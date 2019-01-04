@@ -31,8 +31,8 @@ listLanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'e
 
 # assgin sumo code to each phase
 phases = {
-    "WGREEN": "grrr gGGG grrr gGGG".replace(" ", ""),
-    "NGREEN": "gGGG grrr gGGG grrr".replace(" ", "")
+    "WGREEN": "grrr gGGG grrr gGGG".replace(" ", ""),  # index 0
+    "NGREEN": "gGGG grrr gGGG grrr".replace(" ", "")  # index 1
 }
 
 
@@ -282,11 +282,14 @@ class sumoEnv():
         self.state_sumo = get_state_sumo()
 
         self.vehicle_dict = update_vehicles_state(self.vehicle_dict)
-        phase = traci.trafficlights.getRedYellowGreenState("node0")
-        if phase == phases["WGREEN"]:
+        phase = traci.trafficlights.getPhase("node0")
+
+        if phase == 0:  # WGREEN
             self.phase = "WGREEN"
-        else:
+        elif phase == 2:
             self.phase = "NGREEN"
+        else:
+            self.phase = "YELLOW"
 
     def get_reward(self, blocked_only=True):
         # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
@@ -296,11 +299,16 @@ class sumoEnv():
 
     def step(self, change=True):
 
+        # if change and self.phase in []
+
         if change:
             if self.phase == "WGREEN":
-                traci.trafficlights.setRedYellowGreenState("node0", phases['NGREEN'])
-            else:
-                traci.trafficlights.setRedYellowGreenState("node0", phases['WGREEN'])
+                # traci.trafficlights.setRedYellowGreenState("node0", phases['NGREEN'])
+                traci.trafficlight.setPhase("node0", 1)
+
+            elif self.phase == "NGREEN":
+                # traci.trafficlights.setRedYellowGreenState("node0", phases['WGREEN'])
+                traci.trafficlight.setPhase("node0", 3)
 
         self.update_state()
         return self.encode_state(), self.get_reward()
@@ -423,6 +431,7 @@ def constant_rule(t_max=1000, display_freq=1e12, period=100):
 
         next_s, r = env.step(change=change)
         reward += r
+        time.sleep(0.3)
 
     end_sumo()
 
