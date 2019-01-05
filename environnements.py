@@ -1,5 +1,6 @@
 import traci
-from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen
+from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, get_vehicles_id_incoming
+
 
 class sumoEnv():
 
@@ -13,9 +14,10 @@ class sumoEnv():
         # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
         # w_time = get_overall_waiting_time(listLanes)
 
+        incoming_vehicles = get_vehicles_id_incoming()
+
         reward = 0
-        vehicle_entering = traci.vehicle.getIDList()
-        for id_ in vehicle_entering:
+        for id_ in incoming_vehicles:
             reward += traci.vehicle.getSpeed(id_) - traci.lane.getMaxSpeed(traci.vehicle.getLaneID(id_))
 
         return reward

@@ -3,8 +3,23 @@ import os
 import numpy as np
 
 
-class ConstantAgent(object):
+class Agent():
+    def __init__(self):
+        pass
+
+    def choose_action(self):
+        return False
+
+    def feedback(self, reward):
+        pass
+
+    def reset(self):
+        pass
+
+
+class ConstantAgent(Agent):
     def __init__(self, period=30):
+        super(ConstantAgent, self).__init__()
         self.period = period
         self.count = 0
 
@@ -16,12 +31,10 @@ class ConstantAgent(object):
             return True
         return False
 
-    def feedback(self, reward):
-        pass
 
-
-class SimpleAgent(object):
+class SimpleAgent(Agent):
     def __init__(self, factor):
+        super(SimpleAgent, self).__init__()
         self.factor = factor
 
     def choose_action(self):
@@ -50,13 +63,11 @@ class SimpleAgent(object):
 
         return change
 
-    def feedback(self, reward):
-        pass
 
-
-class QLearningAgent(object):
+class QLearningAgent(Agent):
 
     def __init__(self):
+        super(QLearningAgent, self).__init__()
         self.t = 0
         self.n_states = (4 ** 4) * 2
         self.Q = np.zeros((self.n_states, 2))
@@ -80,8 +91,11 @@ class QLearningAgent(object):
         self.T = np.loadtxt(os.path.join(path, "T.txt"))
 
     def encode_state(self):
+
+        assert get_phase() in [wgreen, ngreen]
+
         # assign an integer between 1 and 511 to each state
-        phase = get_phase() == wgreen
+        phase = int(get_phase() == wgreen)
         state = np.array([0, 0, 0, 0])
 
         for line, num_vehicles in get_state_sumo().items():
@@ -104,11 +118,11 @@ class QLearningAgent(object):
         return s
 
     def choose_action(self):
-        state = self.encode_state()
 
         if get_phase() in [yellow_wn, yellow_nw]:
             return 0
 
+        state = self.encode_state()
         self.last_state = state
 
         if np.random.uniform(0, 1) < self.epsilon:
@@ -127,12 +141,13 @@ class QLearningAgent(object):
         return action
 
     def feedback(self, reward):
-        next_state = self.encode_state()
 
-        if next_state in [yellow_nw, yellow_wn]:
+        if get_phase() in [yellow_nw, yellow_wn]:
             self.acc_reward += reward * (self.gamma ** self.acc_count)
             self.acc_count += 1
             return
+
+        next_state = self.encode_state()
 
         q = self.Q[self.last_state, self.action]
         q_next = np.max(self.Q[next_state])
@@ -144,11 +159,12 @@ class QLearningAgent(object):
         if self.acc_count > 0:
             self.acc_reward += reward * (self.gamma ** self.acc_count)
             q += self.acc_reward
-            q += self.gamma ** (self.acc_count + 1) * q_next
+            q += q_next * (self.gamma ** (self.acc_count + 1))
+            q *= alpha
             self.acc_count = 0
             self.acc_reward = 0
         else:
-            q += reward + self.gamma * q_next
+            q += alpha * (reward + self.gamma * q_next)
 
         self.Q[self.last_state, self.action] = q
 
@@ -164,3 +180,7 @@ class QLearningAgent(object):
         np.savetxt(os.path.join(path, "Q.txt"), self.Q)
         np.savetxt(os.path.join(path, "visited_states.txt"), self.visited_states)
         np.savetxt(os.path.join(path, "T.txt"), self.T)
+
+    def reset(self):
+        self.acc_count = 0
+        self.acc_reward = 0

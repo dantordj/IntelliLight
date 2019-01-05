@@ -1,4 +1,5 @@
-from utils import ConstantAgent, run_agent
+from agents import ConstantAgent
+from training import run_agent
 import matplotlib.pyplot as plt
 
 flow_type = "equal_big"
@@ -6,7 +7,7 @@ flow_type = "equal_big"
 rewards = []
 travel_times = []
 
-periods = [20, 60, 100]
+periods = [20]
 for period in periods:
     print("period = ", period)
 

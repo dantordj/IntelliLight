@@ -1,7 +1,9 @@
 from agents import ConstantAgent, SimpleAgent, QLearningAgent
 from training import train_agent, run_agent
 import matplotlib.pyplot as plt
+import numpy as np
 
+np.random.seed()
 flow_type = "equal_big"
 agent = QLearningAgent()
 epochs = 10

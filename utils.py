@@ -1,14 +1,11 @@
 import sys
 import os
 
-# os.environ["SUMO_HOME"] = "../sumo/"
-
 sys.path.append(
     os.path.join(os.environ["SUMO_HOME"], "tools")
 )
 import traci
 import traci.constants as tc
-import time
 from collections import Counter
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -30,25 +27,11 @@ grid_width = 4
 listLanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
              'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
-# assgin sumo code to each phase
-
+# assign sumo code to each phase
 wgreen = "WGREEN"
 ngreen = "NGREEN"
 yellow_wn = "YELLOW_WN"
 yellow_nw = "YELLOW_NW"
-
-phases = {
-    wgreen: "grrr gGGG grrr gGGG".replace(" ", ""),  # index 0
-    ngreen: "gGGG grrr gGGG grrr".replace(" ", "")  # index 1
-}
-
-
-def get_id_phase(phase):
-    if phase == phases[wgreen]:
-        return wgreen
-    if phase == phases[ngreen]:
-        return ngreen
-
 
 phase_decoder = {
     0: wgreen,
@@ -153,10 +136,9 @@ def is_blocked(lane, phase):
 def get_overall_queue_length(listLanes, blocked_only=False):
     """ return queue length, overall or only the blockes lines """
     overall_queue_length = 0
-    sumo_phase = traci.trafficlights.getRedYellowGreenState("node0")
-    phase = get_id_phase(sumo_phase)
-    for lane in listLanes:
+    phase = get_phase()
 
+    for lane in listLanes:
         blocked = is_blocked(lane, phase)
         if not blocked_only or blocked:
             overall_queue_length += traci.lane.getLastStepHaltingNumber(lane)
@@ -198,14 +180,15 @@ def get_vehicle_id_entering():
 
 
 def get_vehicles_id_incoming():
-    vehicle_id_entering = []
+    vehicles_incoming = []
     entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
                       'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
-    for lane in entering_lanes:
-        vehicle_id_entering.extend(traci.lane.vehicle.getIDList())
+    for vehicle_id in traci.vehicle.getIDList():
+        if traci.vehicle.getLaneID(vehicle_id) in entering_lanes:
+            vehicles_incoming.append(vehicle_id)
 
-    return vehicle_id_entering
+    return vehicles_incoming
 
 
 def update_vehicles_state(dic_vehicles):
@@ -280,6 +263,3 @@ def plottraffic(N):
 
 
 """ Defintion environement and first definition of policy """
-
-
-
