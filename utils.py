@@ -16,8 +16,6 @@ import math
 import matplotlib.pyplot as plt
 from env_name import env_name
 
-use_gui = False
-
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
     sumo_gui_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
