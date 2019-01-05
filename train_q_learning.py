@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 flow_type = "equal_big"
 agent = QLearningAgent()
-epochs = 3
+epochs = 10
 rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=epochs)
 agent.save("q_learning")
 plt.scatter(range(epochs), rewards)

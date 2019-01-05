@@ -16,16 +16,15 @@ import math
 import matplotlib.pyplot as plt
 from env_name import env_name
 
-use_gui = True
+use_gui = False
 
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
-
-    if use_gui:
-        sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
+    sumo_gui_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
 
 else:
     sumo_binary_path = '/usr/local/bin/sumo'
+    sumo_gui_binary_path = '/usr/local/bin/sumo-gui'
 
 # vertical lanes start with edge 4 and edge 3
 area_length = 600
@@ -107,7 +106,7 @@ def set_traffic_file(sumo_config_file_tmp_name, sumo_config_file_output_name, li
     sumo_cfg.write(sumo_config_file_output_name)
 
 
-def start_sumo(traffic):
+def start_sumo(traffic, use_gui=False):
     """ Start sumo, 3 config possibles"""
     trafic_files = {"alternate": "cross.2phases_rou1_switch_rou0.xml",
                     "equal": "cross.2phases_rou01_equal_300s.xml",
@@ -122,7 +121,7 @@ def start_sumo(traffic):
 
     file_path = os.path.join("data", "one_run", "cross.sumocfg")
 
-    sumoCmd = [sumo_binary_path, "-c", file_path]
+    sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
 
     traci.start(sumoCmd)
     for i in range(20):
@@ -406,8 +405,8 @@ class QLearningAgent(object):
         self.n_states = (4 ** 4) * 2
         self.Q = np.zeros((self.n_states, 2))
         self.T = np.zeros((self.n_states, 2))
-        self.gamma = 0.99
-        self.epsilon = 0.01
+        self.gamma = 0.95
+        self.epsilon = 0.05
         self.beta = 0.5
         self.action = 0
         self.last_state = 0
@@ -511,8 +510,8 @@ class QLearningAgent(object):
         np.savetxt(os.path.join(path, "T.txt"), self.T)
 
 
-def run_agent(agent, max_t=1000, flow_type="unequal"):
-    start_sumo(flow_type)
+def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
+    start_sumo(flow_type, use_gui=use_gui)
     env = sumoEnv()
     reward = 0
     n_switches = 0
@@ -545,9 +544,14 @@ def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
     avg_travel_times = []
 
     for i in range(epochs):
+
+        print("epoch: ", i)
         reward, n_switches, avg_travel_time = run_agent(agent, max_t=max_t, flow_type=flow_type)
         rewards.append(reward)
         avg_travel_times.append(avg_travel_time)
+
+        print("reward: ", reward)
+        print("avg_travel_time: ", avg_travel_time)
 
     return rewards, avg_travel_times
 

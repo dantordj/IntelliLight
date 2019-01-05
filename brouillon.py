@@ -27,17 +27,3 @@ for factor in factors:
 plt.scatter(factors, rewards)
 plt.show()
 
-rewards = []
-periods = [10, 20, 40, 60, 80, 100, 120, 200]
-for period in periods:
-    agent = ConstantAgent(period=period)
-    reward, n_switches = run_agent(agent, flow_type=flow_type)
-    rewards.append(reward)
-
-    print("period = ", period)
-    print("reward:", reward)
-    print("n_switches:", n_switches)
-    print()
-
-plt.scatter(periods, rewards)
-plt.show()
