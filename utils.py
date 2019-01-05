@@ -16,7 +16,7 @@ import math
 import matplotlib.pyplot as plt
 from env_name import env_name
 
-use_gui = False
+use_gui = True
 
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
@@ -280,51 +280,8 @@ class sumoEnv():
         self.vehicle_dict = {}
         # self.n_states = (4 ** 4) * 2
         self.n_actions = 2
-
-    """
-    def encode_state(self):
-        # assign an integer between 1 and 511 to each state
-        phase = int(self.phase == wgreen)
-        state = np.array([0, 0, 0, 0])
-
-        for line, num_vehicles in self.state_sumo.items():
-            # integer for the axis
-            try:
-                i = int(line[4]) - 1
-                if i < 0:
-                    # line 0, à priori on doit pas la considérer
-                    continue
-            except:
-                continue
-            if num_vehicles < 3:
-                state[i] = 0
-            elif num_vehicles < 5:
-                state[i] = 1
-            elif num_vehicles < 7:
-                state[i] = 2
-            else:
-                state[i] = 3
-
-        # s = phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
-        return s
-        
-    """
-
-    """
-    def update_state(self):
-
-        self.state_sumo = get_state_sumo()
-
-        self.vehicle_dict = update_vehicles_state(self.vehicle_dict)
-        phase = traci.trafficlights.getPhase("node0")
-
-        if phase == 0:
-            self.phase = wgreen
-        elif phase == 2:
-            self.phase = ngreen
-        else:
-            self.phase = yellow
-    """
+        self.all_vehicles = {}
+        self.arrived_vehicles = {}
 
     def get_reward(self, blocked_only=True):
         # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
@@ -336,6 +293,43 @@ class sumoEnv():
             reward += traci.vehicle.getSpeed(id_) - traci.lane.getMaxSpeed(traci.vehicle.getLaneID(id_))
 
         return reward
+
+    def update_vehicles_dic(self):
+
+        running_vehicles = traci.vehicle.getIDList()
+        arrived_vehicles = traci.simulation.getArrivedIDList()
+
+        # print("len all vehicles: ", len(running_vehicles))
+        # print("len arrived_vehicles: ", len(arrived_vehicles))
+
+        current_time = traci.simulation.getCurrentTime() / 1000
+
+        for vehicle_id in running_vehicles:
+
+            if vehicle_id not in self.all_vehicles.keys():
+                self.all_vehicles[vehicle_id] = {
+                    "start_time": current_time
+                }
+
+        for vehicle_id in arrived_vehicles:
+            if vehicle_id not in self.arrived_vehicles.keys():
+                self.arrived_vehicles[vehicle_id] = {
+                    "stop_time": current_time,
+                    "travel_time": current_time - self.all_vehicles[vehicle_id]["start_time"]
+                }
+
+    def get_avg_travel_time(self):
+        current_time = traci.simulation.getCurrentTime() / 1000
+
+        avg_travel_time = 0
+
+        for key, value in self.all_vehicles.items():
+            if key in self.arrived_vehicles.keys():
+                avg_travel_time += self.arrived_vehicles[key]["travel_time"]
+            else:
+                avg_travel_time += current_time - self.all_vehicles[key]["start_time"]
+
+        return avg_travel_time / len(self.all_vehicles)
 
     def step(self, change=True):
 
@@ -350,6 +344,8 @@ class sumoEnv():
                 set_phase(yellow_nw)
 
         traci.simulationStep()
+
+        self.update_vehicles_dic()
 
 
 class ConstantAgent(object):
@@ -531,23 +527,29 @@ def run_agent(agent, max_t=1000, flow_type="unequal"):
         if use_gui:
             time.sleep(0.3)
 
+    reward /= max_t
+
+    avg_travel_time = env.get_avg_travel_time()
+
+    # print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+    print("len all vehicles: ", len(env.all_vehicles))
+    print("len arrived vehicles: ", len(env.arrived_vehicles))
+
     end_sumo()
 
-    reward /= max_t
-    print("agent.visited_states: ", np.sum(agent.visited_states > 0))
-    print("reward: ", reward)
-    print("n_switches: ", n_switches)
-    return reward, n_switches
+    return reward, n_switches, avg_travel_time
 
 
 def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
     rewards = []
+    avg_travel_times = []
 
     for i in range(epochs):
-        reward, n_switches = run_agent(agent, max_t=max_t, flow_type=flow_type)
+        reward, n_switches, avg_travel_time = run_agent(agent, max_t=max_t, flow_type=flow_type)
         rewards.append(reward)
+        avg_travel_times.append(avg_travel_time)
 
-    return rewards
+    return rewards, avg_travel_times
 
 
 def q_learning(n=10, epsilon=0.01, beta=0.55, t_max=1000, display_freq=1e12):
