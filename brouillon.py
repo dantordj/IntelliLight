@@ -27,3 +27,37 @@ for factor in factors:
 plt.scatter(factors, rewards)
 plt.show()
 
+
+
+"""
+sinon au niveau du code:
+- j'ai touché un peu à la classe sumoEnv, notamment j'ai retiré l'histoire du encode_state car ca doit être fait
+du coté de l'agent
+- maintenant un agent c'est une classe avec une méthode choose_action et une méthode feedback. comme ca ya juste un 
+script run_agent et tu lui passes en argument un agent et il le fait tourner. Le plus simple pour comprendre c'est de 
+regarder ConstantAgent
+- ce qui veut dire que quand tu run l'agent t'as juste ces trois lignes:
+        action = agent.choose_action()
+        env.step(action)
+        reward += env.get_reward()
+        agent.feedback(reward)
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

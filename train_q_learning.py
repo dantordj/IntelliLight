@@ -1,4 +1,5 @@
-from utils import q_learning, simple_rule2, ConstantAgent, SimpleAgent, run_agent, QLearningAgent, train_agent
+from agents import ConstantAgent, SimpleAgent, QLearningAgent
+from training import train_agent, run_agent
 import matplotlib.pyplot as plt
 
 flow_type = "equal_big"
