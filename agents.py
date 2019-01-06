@@ -71,7 +71,7 @@ class SimpleAgent(Agent):
 class QLearningAgent(Agent):
 
     def __init__(self):
-        super(QLearningAgent, self).__init__()
+        # super(QLearningAgent, self).__init__()
         self.t = 0
         self.n_states = (4 ** 4) * 2
         self.Q = np.zeros((self.n_states, 2))
@@ -205,7 +205,7 @@ class DeepQLearningAgent(object):
         self.action = 0
         self.last_state = 0
         self.last_q = np.zeros(2)
-        self.t = 0
+        self.alpha = 0.2
 
         self.acc_reward = 0
         self.acc_count = 0
@@ -213,6 +213,7 @@ class DeepQLearningAgent(object):
         self.network = LinearNet()
         self.lr = 0.001
         self.optim = torch.optim.Adam(self.network.parameters(),lr=self.lr)
+        #self.optim = torch.optim.SGD(self.network.parameters(), lr=self.lr, momentum=0.9)
         # L1 loss
         self.loss = nn.L1Loss()
 
@@ -220,12 +221,12 @@ class DeepQLearningAgent(object):
 
         # store Q values
         self.cache = []
-        self.cache_max = 32
+        self.cache_max = 520
 
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
-        path = os.path.join(path, "linear_net")
+        path = os.path.join(path, "weights")
         self.network.load_state_dict(torch.load(path))
 
     def choose_action(self):
@@ -235,8 +236,8 @@ class DeepQLearningAgent(object):
         state = self.get_state()
         self.last_state = state
         state = torch.tensor(state, dtype=torch.float)
-        q = self.network(state).detach().numpy()
-        self.last_q = q
+        # q = self.network(state).detach().numpy()
+        q = self.last_q
 
         if np.random.uniform(0, 1) < self.epsilon:
             action = np.random.choice([0, 1])
@@ -266,7 +267,8 @@ class DeepQLearningAgent(object):
 
         self.network.eval()
         q_vec = self.last_q
-        q_next = np.max(self.network(next_state).detach().numpy())
+        q_next_vec = self.network(next_state).detach().numpy()
+        q_next = np.max(q_next_vec)
 
         if self.acc_count > 0:
             self.acc_reward += reward * (self.gamma ** self.acc_count)
@@ -278,16 +280,21 @@ class DeepQLearningAgent(object):
         else:
             q = reward + self.gamma * q_next
 
+
         q_vec[self.action] = q
+
+        q_vec = self.alpha * q_vec + (1 - self.alpha) * self.last_q
+
         self.cache += [[self.last_state, q_vec]]
 
         if len(self.cache) == self.cache_max:
             self.train_network()
+        self.last_q = q_next_vec
         return
 
     def train_network(self):
         self.network.train()
-        data_loader = DataLoader(self.cache, batch_size=8, shuffle=True)
+        data_loader = DataLoader(self.cache, batch_size=32, shuffle=True)
         for sample in data_loader:
 
             states = torch.tensor(sample[0], dtype=torch.float)
@@ -318,3 +325,11 @@ class DeepQLearningAgent(object):
             os.makedirs(path)
 
         torch.save(self.network.state_dict(), os.path.join(path, "weights"))
+
+    def reset(self):
+
+        self.train_network()
+        self.acc_count = 0
+        self.last_q = np.zeros(2)
+        self.t = 0
+        self.acc_reward = 0

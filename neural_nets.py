@@ -58,9 +58,9 @@ class LinearNet(nn.Module):
 
         self.Net = nn.Sequential(
             # input size is (1024,)
-            nn.Linear(5, 60),
+            nn.Linear(5, 15),
             nn.ReLU(),
-            nn.Linear(60, 2),
+            nn.Linear(15, 2, bias=True),
 
         )
 

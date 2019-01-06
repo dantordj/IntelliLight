@@ -18,7 +18,7 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
         agent.feedback(reward)
 
         if use_gui:
-            time.sleep(0.3)
+            time.sleep(0.01)
 
         agent.reset()
 

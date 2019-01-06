@@ -1,7 +1,10 @@
-from agents import ConstantAgent, SimpleAgent, QLearningAgent
+from agents import ConstantAgent, SimpleAgent, QLearningAgent, DeepQLearningAgent
 from training import run_agent, train_agent
 import matplotlib.pyplot as plt
+import numpy as np
 
+
+np.random.seed(2)
 flow_type = "equal_big"
 agent = QLearningAgent()
 agent.epsilon = 0.01
