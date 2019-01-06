@@ -1,6 +1,10 @@
 from utils import get_phase, wgreen, ngreen, yellow_nw, yellow_wn, get_state_sumo
 import os
 import numpy as np
+from neural_nets import ConvNet, LinearNet
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
 
 class Agent():
@@ -142,7 +146,9 @@ class QLearningAgent(Agent):
 
     def feedback(self, reward):
 
+
         if get_phase() in [yellow_nw, yellow_wn]:
+
             self.acc_reward += reward * (self.gamma ** self.acc_count)
             self.acc_count += 1
             return
@@ -181,6 +187,134 @@ class QLearningAgent(Agent):
         np.savetxt(os.path.join(path, "visited_states.txt"), self.visited_states)
         np.savetxt(os.path.join(path, "T.txt"), self.T)
 
+
     def reset(self):
         self.acc_count = 0
         self.acc_reward = 0
+
+
+class DeepQLearningAgent(object):
+
+    def __init__(self):
+        self.t = 0
+        self.n_states = 5
+
+        self.gamma = 0.95
+        self.epsilon = 0.05
+        self.beta = 0.5
+        self.action = 0
+        self.last_state = 0
+        self.last_q = np.zeros(2)
+        self.t = 0
+
+        self.acc_reward = 0
+        self.acc_count = 0
+
+        self.network = LinearNet()
+        self.lr = 0.001
+        self.optim = torch.optim.Adam(self.network.parameters(),lr=self.lr)
+        # L1 loss
+        self.loss = nn.L1Loss()
+
+
+
+        # store Q values
+        self.cache = []
+        self.cache_max = 32
+
+
+    def load(self, name):
+        path = os.path.join("saved_agents", name)
+        path = os.path.join(path, "linear_net")
+        self.network.load_state_dict(torch.load(path))
+
+    def choose_action(self):
+        self.t += 1
+        if get_phase() in [yellow_wn, yellow_nw]:
+            return 0
+        state = self.get_state()
+        self.last_state = state
+        state = torch.tensor(state, dtype=torch.float)
+        q = self.network(state).detach().numpy()
+        self.last_q = q
+
+        if np.random.uniform(0, 1) < self.epsilon:
+            action = np.random.choice([0, 1])
+
+        else:
+            self.network.eval()
+            action = np.argmax(q)
+
+        self.action = action
+
+        if action:
+            self.acc_count = 0
+            self.acc_reward = 0
+        return action
+
+    def feedback(self, reward):
+
+        next_state = self.get_state()
+
+        next_state = torch.tensor(next_state, dtype=torch.float)
+
+        if get_phase() in [yellow_nw, yellow_wn]:
+            self.acc_reward += reward * (self.gamma ** self.acc_count)
+            self.acc_count += 1
+            return
+
+
+        self.network.eval()
+        q_vec = self.last_q
+        q_next = np.max(self.network(next_state).detach().numpy())
+
+        if self.acc_count > 0:
+            self.acc_reward += reward * (self.gamma ** self.acc_count)
+            q = self.acc_reward
+            q += q_next * (self.gamma ** (self.acc_count + 1))
+            self.acc_count = 0
+            self.acc_reward = 0
+
+        else:
+            q = reward + self.gamma * q_next
+
+        q_vec[self.action] = q
+        self.cache += [[self.last_state, q_vec]]
+
+        if len(self.cache) == self.cache_max:
+            self.train_network()
+        return
+
+    def train_network(self):
+        self.network.train()
+        data_loader = DataLoader(self.cache, batch_size=8, shuffle=True)
+        for sample in data_loader:
+
+            states = torch.tensor(sample[0], dtype=torch.float)
+            q_values = torch.tensor(sample[1], dtype=torch.float)
+            q = self.network(states)
+            loss = self.loss(q_values, q)
+            loss.backward()
+            self.optim.step()
+        self.cache = []
+
+    def get_state(self):
+        # assign an integer between 1 and 511 to each state
+        phase = int(get_phase() == wgreen)
+        state = np.array([0, 0, 0, 0, phase])
+        for line, num_vehicles in get_state_sumo().items():
+            try:
+                i = int(line[4]) - 1
+                if i < 0:
+                    continue
+            except:
+                continue
+            state[i] = int(num_vehicles)
+        return state
+
+    def save(self, name):
+        path = os.path.join("saved_agents", name)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        torch.save(self.network.state_dict(), os.path.join(path, "weights"))

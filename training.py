@@ -47,6 +47,9 @@ def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
 
         print("reward: ", reward)
         print("avg_travel_time: ", avg_travel_time)
-        print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+        try:
+            print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+        except AttributeError:
+            pass
 
     return rewards, avg_travel_times
