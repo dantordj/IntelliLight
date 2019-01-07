@@ -18,7 +18,7 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
         agent.feedback(reward)
 
         if use_gui:
-            time.sleep(0.3)
+            time.sleep(0.01)
 
         agent.reset()
 
@@ -47,6 +47,9 @@ def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
 
         print("reward: ", reward)
         print("avg_travel_time: ", avg_travel_time)
-        print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+        try:
+            print("agent.visited_states: ", np.sum(agent.visited_states > 0))
+        except AttributeError:
+            pass
 
     return rewards, avg_travel_times

@@ -12,6 +12,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from env_name import env_name
+import torch
+
 
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
@@ -103,7 +105,7 @@ def start_sumo(traffic, use_gui=False):
     file_path = os.path.join("data", "one_run", "cross.sumocfg")
 
     sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
-
+    print(sumoCmd)
     traci.start(sumoCmd)
     for i in range(20):
         traci.simulationStep()
@@ -177,6 +179,7 @@ def get_vehicle_id_entering():
         vehicle_id_entering.extend(traci.lane.getLastStepVehicleIDs(lane))
 
     return vehicle_id_entering
+
 
 
 def get_vehicles_id_incoming():
@@ -260,6 +263,3 @@ def plottraffic(N):
             traci.simulationStep()
         plotcurrenttrafic()
         print(get_state_sumo())
-
-
-""" Defintion environement and first definition of policy """
