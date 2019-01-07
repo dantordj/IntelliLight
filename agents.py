@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-class Agent():
+class Agent(object):
     def __init__(self):
         pass
 
