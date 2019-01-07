@@ -3,6 +3,8 @@ from environnements import sumoEnv
 import time
 import numpy as np
 
+n_steps = 5
+
 
 def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
     start_sumo(flow_type, use_gui=use_gui)
@@ -10,24 +12,33 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
     reward = 0
     n_switches = 0
 
-    for t in range(max_t):
+    t = 0
+    while (t < max_t):
         action = agent.choose_action()
         n_switches += int(action)
+
+        current_reward = 0
+        print("t = ", t)
+        print("action = ", action)
         env.step(action)
-        reward += env.get_reward()
-        agent.feedback(reward)
+        print("")
 
-        if use_gui:
-            time.sleep(0.01)
+        for i in range(n_steps):
+            if use_gui:
+                time.sleep(0.2)
+            env.step(0)
+            current_reward += env.get_reward()
+            t += 1
 
+        agent.feedback(current_reward)
+        reward += current_reward
+
+    print("n switches: ", n_switches)
     agent.reset()
 
     reward /= max_t
 
     avg_travel_time = env.get_avg_travel_time()
-
-    print("len all vehicles: ", len(env.all_vehicles))
-    print("len arrived vehicles: ", len(env.arrived_vehicles))
 
     end_sumo()
 
