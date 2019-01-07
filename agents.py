@@ -205,7 +205,7 @@ class DeepQLearningAgent(object):
         self.action = 0
         self.last_state = 0
         self.last_q = np.zeros(2)
-        self.alpha = 0.2
+        self.alpha = 1
 
         self.acc_reward = 0
         self.acc_count = 0
@@ -221,7 +221,7 @@ class DeepQLearningAgent(object):
 
         # store Q values
         self.cache = []
-        self.cache_max = 520
+        self.cache_max = 32
 
 
     def load(self, name):
@@ -283,7 +283,7 @@ class DeepQLearningAgent(object):
 
         q_vec[self.action] = q
 
-        q_vec = self.alpha * q_vec + (1 - self.alpha) * self.last_q
+        q_vec = torch.tensor(self.alpha * q_vec + (1 - self.alpha) * self.last_q, dtype=torch.float)
 
         self.cache += [[self.last_state, q_vec]]
 
