@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 
-class Agent():
+class Agent(object):
     def __init__(self):
         pass
 
