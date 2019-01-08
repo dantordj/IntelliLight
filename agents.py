@@ -203,7 +203,7 @@ class LinQAgent(object):
         self.last_state = 0
 
         self.network = LinearNet()
-        self.lr = 0.01
+        self.lr = 0.05
         self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
 
@@ -211,10 +211,13 @@ class LinQAgent(object):
         self.cache_max = 90
         self.is_training = True
         self.steps = 0
-        self.start_training = 10000
+        self.is_online = True
 
     def set_is_training(self, is_training):
         self.is_training = is_training
+
+    def set_is_online(self, is_online):
+        self.is_online = is_online
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
@@ -242,8 +245,7 @@ class LinQAgent(object):
 
         print(state)
 
-        if self.steps < self.start_training:
-            print("no piloting")
+        if not self.is_online:
             if self.steps % 5 == 0:
                 self.action = 1
                 return 1
