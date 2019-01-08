@@ -33,7 +33,6 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
         agent.feedback(current_reward)
         reward += current_reward
 
-    print("n switches: ", n_switches)
     agent.reset()
 
     reward /= max_t
@@ -51,13 +50,15 @@ def train_agent(agent, epochs=1, max_t=1000, flow_type="unequal"):
 
     for i in range(epochs):
 
-        print("epoch: ", i)
+        print("start epoch: ", i)
         reward, n_switches, avg_travel_time = run_agent(agent, max_t=max_t, flow_type=flow_type)
         rewards.append(reward)
         avg_travel_times.append(avg_travel_time)
 
+        print("end epoch: ", i)
         print("reward: ", reward)
         print("avg_travel_time: ", avg_travel_time)
+        print("n switches: ", n_switches)
         try:
             print("agent.visited_states: ", np.sum(agent.visited_states > 0))
         except AttributeError:

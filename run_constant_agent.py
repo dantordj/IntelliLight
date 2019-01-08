@@ -1,18 +1,20 @@
-from agents import ConstantAgent
+from agents import ConstantAgent, SimpleAgent
 from training import run_agent
 import matplotlib.pyplot as plt
 
-flow_type = "equal_big"
+flow_type = "unequal_big"
+
+# for constant, unequal: avg_travel_time: 68
 
 rewards = []
 travel_times = []
 
-periods = [20]
-for period in periods:
-    print("period = ", period)
+factors = [1, 2, 3]
+for factor in factors:
+    print("factor = ", factor)
 
-    agent = ConstantAgent(period=period)
-    reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type)
+    agent = SimpleAgent(factor=factor)
+    reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type, use_gui=False)
     rewards.append(reward)
     travel_times.append(avg_travel_time)
 

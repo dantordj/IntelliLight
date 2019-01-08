@@ -52,10 +52,12 @@ class LinearNet(nn.Module):
 
     def __init__(self):
         super(LinearNet, self).__init__()
-        self.feature_size = 8
+        self.feature_size = 6
 
         self.Net = nn.Sequential(
-            nn.Linear(self.feature_size, 1, bias=False)
+            nn.Linear(self.feature_size, 10, bias=False),
+            torch.nn.ReLU(),
+            nn.Linear(10, 1, bias=False),
         )
 
     def forward(self, x):

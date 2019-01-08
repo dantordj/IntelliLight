@@ -5,12 +5,17 @@ import numpy as np
 
 np.random.seed(2)
 
-flow_type = "equal_big"
+flow_type = "unequal_big"
 agent = LinQAgent()
-epochs = 10
-rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=epochs)
 
-agent.epsilon = 0.
+for i in range(10):
+    print("i = ", i)
+    rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=3)
+    agent.save("deep_q_learning")
+    agent.plot()
+
+agent.is_training = False
+agent.plot()
 reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type)
 
 print(reward, n_switches, avg_travel_time)

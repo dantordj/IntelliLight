@@ -12,7 +12,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from env_name import env_name
-import torch
 
 
 if env_name == "raph":
@@ -94,7 +93,8 @@ def start_sumo(traffic, use_gui=False):
     trafic_files = {"alternate": "cross.2phases_rou1_switch_rou0.xml",
                     "equal": "cross.2phases_rou01_equal_300s.xml",
                     "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
-                    "equal_big": "cross.2phases_rou01_equal_300s_big.xml"
+                    "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
+                    "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml"
                     }
     file = trafic_files[traffic]
     set_traffic_file(

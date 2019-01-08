@@ -5,6 +5,8 @@ from neural_nets import ConvNet, LinearNet
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+import seaborn
 
 
 class Agent(object):
@@ -77,7 +79,7 @@ class QLearningAgent(Agent):
         self.Q = np.zeros((self.n_states, 2))
         self.T = np.zeros((self.n_states, 2))
         self.gamma = 0.95
-        self.epsilon = 0.05
+        self.epsilon = 0.1
         self.beta = 0.5
         self.action = 0
         self.last_state = 0
@@ -195,25 +197,21 @@ class LinQAgent(object):
     def __init__(self):
         self.n_states = 4
 
-        self.gamma = 0.8
-        self.epsilon = 0.05
+        self.gamma = 0.9
+        self.epsilon = 0.1
         self.action = 0
         self.last_state = 0
 
-        self.networks = [LinearNet(), LinearNet()]
+        self.network = LinearNet()
         self.lr = 0.01
-        self.optims = [
-            torch.optim.Adam(self.networks[0].parameters(), lr=self.lr),
-            torch.optim.Adam(self.networks[1].parameters(), lr=self.lr)
-            ]
+        self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
 
-        self.caches = [
-            [],
-            []
-        ]
-        self.cache_max = 100
+        self.cache = []
+        self.cache_max = 90
         self.is_training = True
+        self.steps = 0
+        self.start_training = 10000
 
     def set_is_training(self, is_training):
         self.is_training = is_training
@@ -222,23 +220,39 @@ class LinQAgent(object):
         path = os.path.join("saved_agents", name)
         path = os.path.join(path, "weights")
 
-        for i in range(2):
-            self.networks[i].load_state_dict(torch.load(path + str(i)))
+        self.network.load_state_dict(torch.load(path))
+
+    def q_value(self, state, action):
+        current = np.zeros(len(state) + 1)
+        current[:len(state)] = state
+
+        current[-1] = action
+        current = torch.tensor(current, dtype=torch.float)
+
+        return self.network(current).detach().numpy()
 
     def choose_action(self):
+
+        self.steps += 1
+
         assert get_phase() not in [yellow_wn, yellow_nw]
 
         state = self.get_state()
-        print(state)
         self.last_state = state
-        q = np.zeros(2)
 
-        state = torch.tensor(state, dtype=torch.float)
+        print(state)
 
-        for i in range(2):
-            q[i] = self.networks[i](state).detach().numpy()
+        if self.steps < self.start_training:
+            print("no piloting")
+            if self.steps % 5 == 0:
+                self.action = 1
+                return 1
+            self.action = 0
+            return 0
 
-        if np.random.uniform(0, 1) < self.epsilon:
+        q = np.array([self.q_value(state, i) for i in range(2)])
+
+        if np.random.uniform(0, 1) < self.epsilon and self.is_training:
             action = np.random.choice([0, 1])
 
         else:
@@ -248,48 +262,45 @@ class LinQAgent(object):
 
         return action
 
+    def remember(self, state, action, target_q):
+        if self.is_training:
+            current = np.zeros(len(state) + 1)
+            current[:len(state)] = state
+            current[-1] = action
+            self.cache += [[current, target_q]]
+
+            if len(self.cache) >= self.cache_max:
+                self.train_network()
+
     def feedback(self, reward):
 
         next_state = self.get_state()
-        next_state = torch.tensor(next_state, dtype=torch.float)
 
-        for i in range(2):
-            self.networks[i].eval()
-
-        q_next = np.zeros(2)
-
-        for i in range(2):
-            q_next[i] = self.networks[i](next_state).detach().numpy()
-
+        q_next = np.array([self.q_value(next_state, i) for i in range(2)])
         q_next = np.max(q_next)
 
         q = reward + self.gamma * q_next
 
-        if self.is_training:
-            self.caches[self.action] += [[self.last_state, q]]
-
-            if len(self.caches[self.action]) == self.cache_max:
-                self.train_network(self.action)
+        self.remember(self.last_state, self.action, q)
 
         return
 
-    def train_network(self, action):
+    def train_network(self):
 
-        self.networks[action].train()
-        data_loader = DataLoader(self.caches[action], batch_size=32, shuffle=True)
+        self.network.train()
+        data_loader = DataLoader(self.cache, batch_size=32, shuffle=True)
         for sample in data_loader:
             states = torch.tensor(sample[0], dtype=torch.float)
             q_values = torch.tensor(sample[1], dtype=torch.float)
-            q = self.networks[action](states)
+            q = self.network(states)
             loss = self.loss(q_values, q)
             loss.backward()
-            self.optims[action].step()
-        self.caches[action] = []
+            self.optim.step()
+        self.cache = []
 
     def get_state(self):
         phase = int(get_phase() == wgreen)
-        ans = np.zeros(8)
-        state = np.zeros(4)
+        state = np.zeros(4 + 1)
         for line, num_vehicles in get_state_sumo().items():
             try:
                 i = int(line[4]) - 1
@@ -298,21 +309,39 @@ class LinQAgent(object):
             except:
                 continue
             state[i] = int(num_vehicles)
-        ans[phase * 4: (phase + 1) * 4] = state
-        return ans
+        state[-1] = phase
+        return state
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
         if not os.path.exists(path):
             os.makedirs(path)
 
-        for i in range(2):
-            torch.save(self.networks[i].state_dict(), os.path.join(path, "weights" + str(i)))
+        torch.save(self.network.state_dict(), os.path.join(path, "weights"))
 
     def reset(self):
+        self.train_network()
 
-        for i in range(2):
-            self.train_network(i)
+    def plot(self):
+        size_array = 15
+        matrix = np.zeros((size_array, size_array))
+
+        for i in range(size_array):
+            for j in range(size_array):
+
+                incoming_e = i
+                incoming_w = 0
+                incoming_n = j
+                incoming_s = 0
+
+                phase = "WGREEN"
+                state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
+
+                q = np.array([self.q_value(state, i) for i in range(2)])
+                matrix[i, j] = np.argmax(q)
+
+        seaborn.heatmap(matrix, cmap="hot")
+        plt.show()
 
 
 class DeepQLearningAgent(object):
