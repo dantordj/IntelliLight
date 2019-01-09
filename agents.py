@@ -210,6 +210,17 @@ class MyNormalizer(object):
         obs_std = np.sqrt(self.var)
         return (inputs - self.mean)/obs_std
 
+    def save(self, path):
+        to_store = np.array([self.n, self.mean, self.mean_diff, self.var])
+        np.savetxt(os.path.join(path, "normalizer.txt"), to_store)
+
+    def load(self, path):
+        to_store = np.loadtxt(os.path.join(path, "normalizer.txt"))
+        self.n = to_store[0]
+        self.mean = to_store[1]
+        self.mean_diff = to_store[2]
+        self.var = to_store[3]
+
 
 class LinQAgent(object):
 
@@ -242,6 +253,7 @@ class LinQAgent(object):
         self.is_online = True
         self.count = 0
         self.normalizer = MyNormalizer(self.n_features)
+        self.has_trained = False
 
     def set_is_training(self, is_training):
         self.is_training = is_training
@@ -249,11 +261,20 @@ class LinQAgent(object):
     def set_is_online(self, is_online):
         self.is_online = is_online
 
+    def save(self, name):
+        path = os.path.join("saved_agents", name)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        torch.save(self.network.state_dict(), os.path.join(path, "weights"))
+        self.normalizer.save(path)
+
     def load(self, name):
         path = os.path.join("saved_agents", name)
         path = os.path.join(path, "weights")
 
         self.network.load_state_dict(torch.load(path))
+        self.normalizer.load(os.path.join("saved_agents", name))
 
     def q_value(self, state, action):
 
@@ -265,10 +286,13 @@ class LinQAgent(object):
             current[:len(state)] = state
             current[-1] = action
 
-        current = self.normalizer.normalize(current)
-        current = torch.tensor(current, dtype=torch.float)
+        if self.has_trained:
+            current = self.normalizer.normalize(current)
+            current = torch.tensor(current, dtype=torch.float)
 
-        return self.network.forward(current).detach().numpy()
+            return self.network.forward(current).detach().numpy()
+        else:
+            return 0
 
     def choose_action(self):
 
@@ -280,7 +304,7 @@ class LinQAgent(object):
         self.last_state = state
 
         if not self.is_online:
-            if np.random.rand() < 0.3:
+            if self.steps % 5 == 0:
                 self.action = 1
                 return 1
             self.action = 0
@@ -311,7 +335,7 @@ class LinQAgent(object):
             self.normalizer.observe(current)
             current = self.normalizer.normalize(current)
 
-            if self.steps > 50:
+            if self.steps > 1000:
                 self.cache += [[current, target_q]]
 
             if len(self.cache) >= self.cache_max:
@@ -334,35 +358,41 @@ class LinQAgent(object):
 
         print("len cache: ", len(self.cache))
 
-        self.network.train()
-        for i in range(30):
-            loss_epoch = 0
-            data_loader = DataLoader(self.cache, batch_size=10000, shuffle=True)
-            count = 0
-            for sample in data_loader:
-                count += 1
-                self.optim.zero_grad()
-                states = torch.tensor(sample[0], dtype=torch.float)
-                temp = np.reshape(sample[1], (len(sample[1]), 1))
-                q_values = torch.tensor(temp, dtype=torch.float)
-                q = self.network.forward(states)
+        if len(self.cache) > 0:
 
-                loss = self.loss(q_values, q)
+            self.has_trained = True
 
-                numpy_loss = loss.detach().numpy()
-                loss_epoch += numpy_loss
+            self.network.train()
+            for i in range(30):
+                loss_epoch = 0
+                data_loader = DataLoader(self.cache, batch_size=10000, shuffle=True)
+                count = 0
+                for sample in data_loader:
+                    count += 1
+                    self.optim.zero_grad()
+                    states = torch.tensor(sample[0], dtype=torch.float)
+                    temp = np.reshape(sample[1], (len(sample[1]), 1))
+                    q_values = torch.tensor(temp, dtype=torch.float)
+                    q = self.network.forward(states)
 
-                loss.backward()
-                self.optim.step()
+                    loss = self.loss(q_values, q)
 
-            if i == 0:
-                l1_crit = nn.L1Loss(reduction="sum")
-                reg_loss = 0
-                for param in self.network.parameters():
-                    reg_loss += l1_crit(param, torch.zeros_like(param))
-                print("reg loss: ", reg_loss.detach().numpy())
+                    numpy_loss = loss.detach().numpy()
+                    loss_epoch += numpy_loss
 
-            print("Loss: ", loss_epoch / len(self.cache))
+                    loss.backward()
+                    self.optim.step()
+
+                if i == 0:
+                    l1_crit = nn.L1Loss(reduction="sum")
+                    reg_loss = 0
+                    for param in self.network.parameters():
+                        reg_loss += l1_crit(param, torch.zeros_like(param))
+                    print("reg loss: ", reg_loss.detach().numpy())
+
+                print("Loss: ", loss_epoch / len(self.cache))
+        else:
+            print("no cache no training")
 
         self.cache = []
 
@@ -388,13 +418,6 @@ class LinQAgent(object):
             state[-1] = phase
 
         return state
-
-    def save(self, name):
-        path = os.path.join("saved_agents", name)
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        torch.save(self.network.state_dict(), os.path.join(path, "weights"))
 
     def reset(self):
         if self.is_training:
