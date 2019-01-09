@@ -148,7 +148,7 @@ class LearningAgent(Agent):
         return
 
     def plot(self):
-        size_array = 15
+        size_array = 4 if self.mode == "q_learning" else 15
         matrix = np.zeros((size_array, size_array))
 
         for phase in ["WGREEN", "NGREEN"]:
@@ -160,15 +160,18 @@ class LearningAgent(Agent):
                     incoming_w = i
                     incoming_n = j
                     incoming_s = j
+                    int_phase = int(phase == "WGREEN")
 
                     if self.mode == "lin":
-                        int_phase = int(phase == "WGREEN")
                         temp = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
                         state = np.zeros(8)
                         state[int_phase * 4: (int_phase + 1) * 4] = temp
 
-                    else:
+                    elif self.mode == "deep":
                         state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
+                    else:
+                        state = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
+                        state = int_phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
 
                     q = np.array([self.q_value(state, k) for k in range(2)])
                     matrix[i, j] = np.argmax(q)
