@@ -13,7 +13,6 @@ import math
 import matplotlib.pyplot as plt
 from env_name import env_name
 
-
 if env_name == "raph":
     sumo_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo")
     sumo_gui_binary_path = os.path.join('c:', os.sep, "Program Files (x86)", "Eclipse", "Sumo", "bin", "sumo-gui")
@@ -25,8 +24,9 @@ else:
 # vertical lanes start with edge 4 and edge 3
 area_length = 600
 grid_width = 4
-listLanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
-             'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
+
+entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
+                  'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
 # assign sumo code to each phase
 wgreen = "WGREEN"
@@ -75,40 +75,61 @@ class Vehicles:
         self.entering = True
 
 
-def set_traffic_file(sumo_config_file_tmp_name, sumo_config_file_output_name, list_traffic_file_name):
+def set_traffic_file(
+        sumo_config_file_tmp_name, sumo_config_file_output_name, list_traffic_file_name
+):
     """ Set the traffic file in the sumo config"""
     # update sumocfg
     sumo_cfg = ET.parse(sumo_config_file_tmp_name)
     config_node = sumo_cfg.getroot()
     input_node = config_node.find("input")
+
     for route_files in input_node.findall("route-files"):
         input_node.remove(route_files)
     input_node.append(
-        ET.Element("route-files", attrib={"value": ",".join(list_traffic_file_name)}))
+        ET.Element("route-files", attrib={"value": ",".join(list_traffic_file_name)})
+    )
+
     sumo_cfg.write(sumo_config_file_output_name)
 
 
-def start_sumo(traffic, use_gui=False):
+def start_sumo(traffic, lane_type="uniform", use_gui=False):
     """ Start sumo, 3 config possibles"""
-    trafic_files = {"alternate": "cross.2phases_rou1_switch_rou0.xml",
-                    "equal": "cross.2phases_rou01_equal_300s.xml",
-                    "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
-                    "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
-                    "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml",
-                    "my_flow": "my_flow.xml"
-                    }
-    file = trafic_files[traffic]
-    set_traffic_file(
-        os.path.join('data/one_run', "cross.sumocfg"),
-        os.path.join('data/one_run', "cross.sumocfg"),
-        [file])
+    trafic_files = {
+        "alternate": "cross.2phases_rou1_switch_rou0.xml",
+        "equal": "cross.2phases_rou01_equal_300s.xml",
+        "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
+        "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
+        "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml",
+        "my_flow": "my_flow.xml"
+    }
 
-    file_path = os.path.join("data", "one_run", "cross.sumocfg")
+    set_traffic_file(
+        os.path.join("data", "one_run", "cross.sumocfg"),
+        os.path.join("data", "one_run", "cross.temp_config.sumocfg"),
+        [trafic_files[traffic]]
+    )
+
+    file_path = os.path.join("data", "one_run", "cross.temp_config.sumocfg")
 
     sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
-    print(sumoCmd)
     traci.start(sumoCmd)
-    for i in range(20):
+
+    speed_dic = {
+        "uniform": {"fast_lane": 19.44, "slow_lane": 19.44},
+        "slow_lane": {"fast_lane": 19.44, "slow_lane": 10.00}
+    }
+
+    slow_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2']
+    fast_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
+
+    for lane_id in slow_lanes:
+        traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["slow_lane"])
+
+    for lane_id in fast_lanes:
+        traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["fast_lane"])
+
+    for i in range(3):
         traci.simulationStep()
 
 
@@ -173,8 +194,6 @@ def get_travel_time_duration(vehicle_dict, vehicle_id_list):
 
 def get_vehicle_id_entering():
     vehicle_id_entering = []
-    entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
-                      'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
     for lane in entering_lanes:
         vehicle_id_entering.extend(traci.lane.getLastStepVehicleIDs(lane))
@@ -182,11 +201,8 @@ def get_vehicle_id_entering():
     return vehicle_id_entering
 
 
-
 def get_vehicles_id_incoming():
     vehicles_incoming = []
-    entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
-                      'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
     for vehicle_id in traci.vehicle.getIDList():
         if traci.vehicle.getLaneID(vehicle_id) in entering_lanes:

@@ -1,5 +1,5 @@
 import traci
-from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, get_vehicles_id_incoming
+from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, get_vehicles_id_incoming, entering_lanes
 
 
 class sumoEnv():
@@ -19,6 +19,8 @@ class sumoEnv():
         reward = 0
         for id_ in incoming_vehicles:
             reward += traci.vehicle.getSpeed(id_) - traci.lane.getMaxSpeed(traci.vehicle.getLaneID(id_))
+            print(traci.vehicle.getLaneID(id_))
+            print(entering_lanes)
 
         return reward / 1000.
 

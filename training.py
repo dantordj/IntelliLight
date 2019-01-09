@@ -6,8 +6,8 @@ import numpy as np
 n_steps = 5
 
 
-def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
-    start_sumo(flow_type, use_gui=use_gui)
+def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_gui=False):
+    start_sumo(flow_type, lane_type=lane_type, use_gui=use_gui)
     env = sumoEnv()
     reward = 0
     n_switches = 0
