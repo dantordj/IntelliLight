@@ -18,10 +18,8 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
         n_switches += int(action)
 
         current_reward = 0
-        print("t = ", t)
-        print("action = ", action)
+
         env.step(action)
-        print("")
 
         for i in range(n_steps):
             if use_gui:
@@ -29,6 +27,8 @@ def run_agent(agent, max_t=1000, flow_type="unequal", use_gui=False):
             env.step(0)
             current_reward += env.get_reward()
             t += 1
+        if t % 100 == 0:
+            print("t = ", t)
 
         agent.feedback(current_reward)
         reward += current_reward

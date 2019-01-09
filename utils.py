@@ -94,7 +94,8 @@ def start_sumo(traffic, use_gui=False):
                     "equal": "cross.2phases_rou01_equal_300s.xml",
                     "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
                     "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
-                    "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml"
+                    "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml",
+                    "my_flow": "my_flow.xml"
                     }
     file = trafic_files[traffic]
     set_traffic_file(

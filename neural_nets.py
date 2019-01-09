@@ -52,29 +52,26 @@ class LinearNet(nn.Module):
 
     def __init__(self):
         super(LinearNet, self).__init__()
-        self.feature_size = 6
+        self.feature_size = 16
 
-        self.Net = nn.Sequential(
-            nn.Linear(self.feature_size, 10, bias=False),
-            torch.nn.ReLU(),
-            nn.Linear(10, 1, bias=False),
-        )
+        self.fc1 = nn.Linear(self.feature_size, 1, bias=False)
 
     def forward(self, x):
-        x = self.Net(x)
-        return x
+        return self.fc1(x)
 
 
-class LinearNet2(nn.Module):
+class DeepNet(nn.Module):
 
     def __init__(self):
-        super(LinearNet, self).__init__()
-        self.feature_size = 8
+        super(DeepNet, self).__init__()
+        self.feature_size = 6
 
-        self.Net = nn.Sequential(
-            nn.Linear(self.feature_size, 2)
-        )
+        self.fc1 = nn.Linear(self.feature_size, 16, bias=False)
+        self.activation = torch.nn.ReLU()
+        self.fc2 = nn.Linear(16, 5, bias=False)
+        self.fc3 = nn.Linear(5, 1, bias=False)
 
     def forward(self, x):
-        x = self.Net(x)
-        return x
+        x = self.activation(self.fc1(x))
+        x = self.activation(self.fc2(x))
+        return self.fc3(x)

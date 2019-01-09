@@ -8,14 +8,13 @@ np.random.seed(2)
 torch.manual_seed(2)
 
 flow_type = "equal_big"
-agent = LinQAgent(mode="deep")
+agent = LinQAgent(mode="lin")
 agent.set_is_online(False)
 
-for i in range(10):
+for i in range(100):
     print("i = ", i)
-    rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=1, max_t=10000)
-    agent.save("lin_q")
-    agent.set_is_online(False)
+    rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=1, max_t=1000)
+    agent.save("lin_q_learning_pretrained_offline")
 
 agent.set_is_training(False)
 agent.set_is_online(True)
