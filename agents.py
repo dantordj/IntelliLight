@@ -70,23 +70,176 @@ class SimpleAgent(Agent):
         return change
 
 
-class QLearningAgent(Agent):
+class LearningAgent(Agent):
+    def __init__(self):
+        super(LearningAgent, self).__init__()
+        self.is_training = True
+        self.is_online = True
+        self.steps = 0
+        self.mode = "none"
+        self.gamma = 0.8
+        self.epsilon = 0.1
+        self.action = 0
+        self.last_state = 0
+
+    def set_is_training(self, is_training):
+        self.is_training = is_training
+
+    def set_is_online(self, is_online):
+        self.is_online = is_online
+
+    def save(self, name):
+        pass
+
+    def load(self, name):
+        pass
+
+    def q_value(self, state, k):
+        return 0
+
+    def reset(self):
+        pass
+
+    def choose_action(self):
+
+        self.steps += 1
+
+        assert get_phase() not in [yellow_wn, yellow_nw]
+
+        state = self.get_state()
+        self.last_state = state
+
+        if not self.is_online:
+            # offline mode, juste change the light every n iterations
+            if self.steps % 5 == 0:
+                self.action = 1
+                return 1
+            self.action = 0
+            return 0
+
+        q = np.array([self.q_value(state, i) for i in range(2)])
+
+        if np.random.uniform(0, 1) < self.epsilon and self.is_training:
+            action = np.random.choice([0, 1])
+        else:
+            action = np.argmax(q)
+
+        self.action = action
+
+        return action
+
+    def get_state(self):
+        return 0
+
+    def remember(self, state, action, target_q):
+        pass
+
+    def feedback(self, reward):
+
+        next_state = self.get_state()
+
+        q_next = np.array([self.q_value(next_state, i) for i in range(2)])
+        q_next = np.max(q_next)
+
+        q = reward + self.gamma * q_next
+
+        self.remember(self.last_state, self.action, q)
+
+        return
+
+    def plot(self):
+        size_array = 15
+        matrix = np.zeros((size_array, size_array))
+
+        for phase in ["WGREEN", "NGREEN"]:
+
+            for i in range(size_array):
+                for j in range(size_array):
+
+                    incoming_e = i
+                    incoming_w = i
+                    incoming_n = j
+                    incoming_s = j
+
+                    if self.mode == "lin":
+                        int_phase = int(phase == "WGREEN")
+                        temp = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
+                        state = np.zeros(8)
+                        state[int_phase * 4: (int_phase + 1) * 4] = temp
+
+                    else:
+                        state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
+
+                    q = np.array([self.q_value(state, k) for k in range(2)])
+                    matrix[i, j] = np.argmax(q)
+
+            seaborn.heatmap(matrix, cmap="hot")
+            plt.title(phase)
+            plt.xlabel("incoming ew")
+            plt.ylabel("incoming ns")
+            plt.show()
+
+        q_values = np.zeros(10)
+
+        phase = "WGREEN"
+        for i in range(10):
+            incoming_e = 0
+            incoming_w = 0
+            incoming_n = i
+            incoming_s = i
+            int_phase = int(phase == "WGREEN")
+
+            if self.mode == "lin":
+                temp = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
+                state = np.zeros(8)
+                state[int_phase * 4: (int_phase + 1) * 4] = temp
+
+            elif self.mode == "deep":
+                state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
+            else:
+                state = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
+                state = int_phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
+
+            q = self.q_value(state, 0)
+            q_values[i] = q
+
+        plt.plot(range(10), q_values)
+        plt.title(phase)
+        plt.xlabel("incoming n")
+        plt.ylabel("q value")
+        plt.show()
+
+
+class QLearningAgent(LearningAgent):
 
     def __init__(self):
-        # super(QLearningAgent, self).__init__()
-        self.t = 0
+        super(QLearningAgent, self).__init__()
+        self.mode = "q_learning"
+
+        self.steps = 0
         self.n_states = (4 ** 4) * 2
         self.Q = np.zeros((self.n_states, 2))
         self.T = np.zeros((self.n_states, 2))
-        self.gamma = 0.95
+
+        self.observe_steps = 5000
+
+        # parameters
+        self.gamma = 0.8
         self.epsilon = 0.1
         self.beta = 0.5
         self.action = 0
         self.last_state = 0
 
-        self.acc_reward = 0
-        self.acc_count = 0
         self.visited_states = np.zeros(self.n_states)
+
+    def save(self, name):
+        path = os.path.join("saved_agents", name)
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        np.savetxt(os.path.join(path, "Q.txt"), self.Q)
+        np.savetxt(os.path.join(path, "visited_states.txt"), self.visited_states)
+        np.savetxt(os.path.join(path, "T.txt"), self.T)
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
@@ -96,7 +249,10 @@ class QLearningAgent(Agent):
         self.visited_states = np.loadtxt(os.path.join(path, "visited_states.txt"))
         self.T = np.loadtxt(os.path.join(path, "T.txt"))
 
-    def encode_state(self):
+    def q_value(self, state, action):
+        return self.Q[state, action]
+
+    def get_state(self):
 
         assert get_phase() in [wgreen, ngreen]
 
@@ -123,73 +279,12 @@ class QLearningAgent(Agent):
         s = phase + np.dot(state, np.array([4 ** i for i in range(4)]) * 2)
         return s
 
-    def choose_action(self):
-
-        if get_phase() in [yellow_wn, yellow_nw]:
-            return 0
-
-        state = self.encode_state()
-        self.last_state = state
-
-        if np.random.uniform(0, 1) < self.epsilon:
-            action = np.random.choice([0, 1])
-        else:
-            action = np.argmax(self.Q[state])
-
-        self.action = action
-
-        if action:
-            self.acc_count = 0
-            self.acc_reward = 0
-
+    def remember(self, state, action, target_q):
         self.T[state, action] += 1
-
-        return action
-
-    def feedback(self, reward):
-
-        if get_phase() in [yellow_nw, yellow_wn]:
-            self.acc_reward += reward * (self.gamma ** self.acc_count)
-            self.acc_count += 1
-            return
-
-        next_state = self.encode_state()
-
-        q = self.Q[self.last_state, self.action]
-        q_next = np.max(self.Q[next_state])
-
-        alpha = (1. / self.T[self.last_state, self.action]) ** self.beta
-
-        q = (1 - alpha) * q
-
-        if self.acc_count > 0:
-            self.acc_reward += reward * (self.gamma ** self.acc_count)
-            q += self.acc_reward
-            q += q_next * (self.gamma ** (self.acc_count + 1))
-            q *= alpha
-            self.acc_count = 0
-            self.acc_reward = 0
-        else:
-            q += alpha * (reward + self.gamma * q_next)
-
-        self.Q[self.last_state, self.action] = q
-
-        self.visited_states[self.last_state] += 1
-
-        return
-
-    def save(self, name):
-        path = os.path.join("saved_agents", name)
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-        np.savetxt(os.path.join(path, "Q.txt"), self.Q)
-        np.savetxt(os.path.join(path, "visited_states.txt"), self.visited_states)
-        np.savetxt(os.path.join(path, "T.txt"), self.T)
-
-    def reset(self):
-        self.acc_count = 0
-        self.acc_reward = 0
+        current_q = self.Q[state, action]
+        alpha = (1. / self.T[state, action]) ** self.beta
+        self.Q[state, action] = (1 - alpha) * current_q + alpha * target_q
+        self.visited_states[state] += 1
 
 
 class MyNormalizer(object):
@@ -222,9 +317,10 @@ class MyNormalizer(object):
         self.var = to_store[3]
 
 
-class LinQAgent(object):
+class LinQAgent(LearningAgent):
 
     def __init__(self, mode="lin"):
+        super(LinQAgent, self).__init__()
 
         self.mode = mode
 
@@ -238,28 +334,22 @@ class LinQAgent(object):
             self.lr = 1e-2
             self.n_features = 6
 
-        self.gamma = 0.8
-        self.epsilon = 0.1
-        self.action = 0
-        self.last_state = 0
+        # parameters
+        self.cache_max = 20000
+        self.observe_steps = 5000
+        self.epochs_per_train = 30
+
+        # attributes
+        self.count = 0
+        self.cache = []
+
+        self.is_training = True
+        self.is_online = True
+        self.has_trained = False
 
         self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
-
-        self.cache = []
-        self.cache_max = 20000
-        self.is_training = True
-        self.steps = 0
-        self.is_online = True
-        self.count = 0
         self.normalizer = MyNormalizer(self.n_features)
-        self.has_trained = False
-
-    def set_is_training(self, is_training):
-        self.is_training = is_training
-
-    def set_is_online(self, is_online):
-        self.is_online = is_online
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
@@ -268,6 +358,7 @@ class LinQAgent(object):
 
         torch.save(self.network.state_dict(), os.path.join(path, "weights"))
         self.normalizer.save(path)
+        self.steps = self.normalizer.n.copy()
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
@@ -275,6 +366,7 @@ class LinQAgent(object):
 
         self.network.load_state_dict(torch.load(path))
         self.normalizer.load(os.path.join("saved_agents", name))
+        self.has_trained = True
 
     def q_value(self, state, action):
 
@@ -294,33 +386,6 @@ class LinQAgent(object):
         else:
             return 0
 
-    def choose_action(self):
-
-        self.steps += 1
-
-        assert get_phase() not in [yellow_wn, yellow_nw]
-
-        state = self.get_state()
-        self.last_state = state
-
-        if not self.is_online:
-            if self.steps % 5 == 0:
-                self.action = 1
-                return 1
-            self.action = 0
-            return 0
-
-        q = np.array([self.q_value(state, i) for i in range(2)])
-
-        if np.random.uniform(0, 1) < self.epsilon and self.is_training:
-            action = np.random.choice([0, 1])
-        else:
-            action = np.argmax(q)
-
-        self.action = action
-
-        return action
-
     def remember(self, state, action, target_q):
         if self.is_training:
 
@@ -335,35 +400,20 @@ class LinQAgent(object):
             self.normalizer.observe(current)
             current = self.normalizer.normalize(current)
 
-            if self.steps > 1000:
+            if self.steps > self.observe_steps:
                 self.cache += [[current, target_q]]
 
             if len(self.cache) >= self.cache_max:
                 self.train_network()
 
-    def feedback(self, reward):
-
-        next_state = self.get_state()
-
-        q_next = np.array([self.q_value(next_state, i) for i in range(2)])
-        q_next = np.max(q_next)
-
-        q = reward + self.gamma * q_next
-
-        self.remember(self.last_state, self.action, q)
-
-        return
-
     def train_network(self):
-
-        print("len cache: ", len(self.cache))
 
         if len(self.cache) > 0:
 
             self.has_trained = True
 
             self.network.train()
-            for i in range(30):
+            for i in range(self.epochs_per_train):
                 loss_epoch = 0
                 data_loader = DataLoader(self.cache, batch_size=10000, shuffle=True)
                 count = 0
@@ -423,62 +473,5 @@ class LinQAgent(object):
         if self.is_training:
             self.train_network()
 
-    def plot(self):
-        size_array = 15
-        matrix = np.zeros((size_array, size_array))
 
-        for phase in ["WGREEN", "NGREEN"]:
-
-            for i in range(size_array):
-                for j in range(size_array):
-
-                    incoming_e = i
-                    incoming_w = i
-                    incoming_n = j
-                    incoming_s = j
-
-                    if self.mode == "lin":
-                        int_phase = int(phase == "WGREEN")
-                        temp = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
-                        state = np.zeros(8)
-                        state[int_phase * 4: (int_phase + 1) * 4] = temp
-
-                    else:
-                        state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
-
-                    q = np.array([self.q_value(state, k) for k in range(2)])
-                    matrix[i, j] = np.argmax(q)
-
-            seaborn.heatmap(matrix, cmap="hot")
-            plt.title(phase)
-            plt.xlabel("incoming ew")
-            plt.ylabel("incoming ns")
-            plt.show()
-
-        q_values = np.zeros(10)
-
-        phase = "WGREEN"
-        for i in range(10):
-            incoming_e = 0
-            incoming_w = 0
-            incoming_n = i
-            incoming_s = i
-
-            if self.mode == "lin":
-                int_phase = int(phase == "WGREEN")
-                temp = np.array([incoming_n, incoming_s, incoming_e, incoming_w])
-                state = np.zeros(8)
-                state[int_phase * 4: (int_phase + 1) * 4] = temp
-
-            else:
-                state = np.array([incoming_n, incoming_s, incoming_e, incoming_w, int(phase == "WGREEN")])
-
-            q = self.q_value(state, 0)
-            q_values[i] = q
-
-        plt.plot(range(10), q_values)
-        plt.title(phase)
-        plt.xlabel("incoming n")
-        plt.ylabel("q value")
-        plt.show()
 
