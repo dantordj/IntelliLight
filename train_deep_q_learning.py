@@ -8,17 +8,17 @@ np.random.seed(2)
 torch.manual_seed(2)
 
 flow_type = "my_flow"
-agent = LinQAgent(mode="deep")
-agent.load("lin_q")
+features = ["count_incoming", "median_speed", "mean_speed"]
+agent = LinQAgent(mode="deep", features=features)
+agent.load("lin_q_pretrained")
 agent.set_is_online(True)
 agent.set_is_training(True)
 agent.has_trained = True
 
-for i in range(10):
+for i in range(30):
     print("i = ", i)
     rewards, avg_travel_times = train_agent(agent, flow_type=flow_type, epochs=1, max_t=5000)
-    agent.save("lin_q")
-    agent.plot()
+    agent.save("lin_q_pretrained")
 
 agent.set_is_training(False)
 agent.set_is_online(True)

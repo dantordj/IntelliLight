@@ -19,8 +19,6 @@ class sumoEnv():
         reward = 0
         for id_ in incoming_vehicles:
             reward += traci.vehicle.getSpeed(id_) - traci.lane.getMaxSpeed(traci.vehicle.getLaneID(id_))
-            print(traci.vehicle.getLaneID(id_))
-            print(entering_lanes)
 
         return reward / 1000.
 

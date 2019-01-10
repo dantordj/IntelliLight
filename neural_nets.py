@@ -50,11 +50,11 @@ class ConvNet(nn.Module):
 
 class LinearNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, n_inputs):
         super(LinearNet, self).__init__()
-        self.feature_size = 16
+        self.n_inputs = n_inputs
 
-        self.fc1 = nn.Linear(self.feature_size, 1, bias=False)
+        self.fc1 = nn.Linear(self.n_inputs, 1, bias=False)
 
     def forward(self, x):
         return self.fc1(x)
@@ -62,11 +62,11 @@ class LinearNet(nn.Module):
 
 class DeepNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, n_inputs):
         super(DeepNet, self).__init__()
-        self.feature_size = 6
+        self.n_inputs = n_inputs
 
-        self.fc1 = nn.Linear(self.feature_size, 16, bias=False)
+        self.fc1 = nn.Linear(self.n_inputs, 16, bias=False)
         self.activation = torch.nn.ReLU()
         self.fc2 = nn.Linear(16, 5, bias=False)
         self.fc3 = nn.Linear(5, 1, bias=False)

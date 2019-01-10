@@ -28,6 +28,11 @@ grid_width = 4
 entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
                   'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
+east_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2']  # we should check this
+west_lanes = ['edge2-0_0', 'edge2-0_1', 'edge2-0_2']
+north_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2']
+south_lanes = ['edge4-0_0', 'edge4-0_1', 'edge4-0_2']
+
 # assign sumo code to each phase
 wgreen = "WGREEN"
 ngreen = "NGREEN"
@@ -141,7 +146,23 @@ def get_state_sumo():
     for vehicle_id in vehicle_id_list:
         road_id = traci.vehicle.getRoadID(vehicle_id)
         vehicle_roads[road_id] += 1
-    return vehicle_roads
+
+    incoming_lanes = {"south": south_lanes, "north": north_lanes, "east": east_lanes, "west": west_lanes}
+
+    count_incoming = {}
+    speed_incoming = {}
+    for key, value in incoming_lanes.items():
+        count_incoming[key] = 0
+        speed_incoming[key] = []
+
+    for vehicle_id in traci.vehicle.getIDList():
+        current_lane_id = traci.vehicle.getLaneID(vehicle_id)
+        for key, value in incoming_lanes.items():
+            if current_lane_id in incoming_lanes[key]:
+                count_incoming[key] += 1
+                speed_incoming[key].append(traci.vehicle.getSpeed(vehicle_id))
+
+    return count_incoming, speed_incoming
 
 
 def is_blocked(lane, phase):
@@ -158,7 +179,9 @@ def is_blocked(lane, phase):
 
 
 def get_overall_queue_length(listLanes, blocked_only=False):
-    """ return queue length, overall or only the blockes lines """
+    """
+    we keep this for now because we might be using the queue length later
+    """
     overall_queue_length = 0
     phase = get_phase()
 
@@ -168,37 +191,6 @@ def get_overall_queue_length(listLanes, blocked_only=False):
             overall_queue_length += traci.lane.getLastStepHaltingNumber(lane)
 
     return overall_queue_length
-
-
-def get_overall_waiting_time(listLanes):
-    """ Unused for now"""
-    overall_waiting_time = 0
-    for lane in listLanes:
-        overall_waiting_time += traci.lane.getWaitingTime(str(lane)) / 60.0
-
-    return overall_waiting_time
-
-
-def get_travel_time_duration(vehicle_dict, vehicle_id_list):
-    """ Unused for now"""
-    travel_time_duration = 0
-    for vehicle_id in vehicle_id_list:
-        if (vehicle_id in vehicle_dict.keys()):
-            travel_time_duration += (traci.simulation.getCurrentTime() / 1000 - vehicle_dict[
-                vehicle_id].enter_time) / 60.0
-    if len(vehicle_id_list) > 0:
-        return travel_time_duration  # /len(vehicle_id_list)
-    else:
-        return 0
-
-
-def get_vehicle_id_entering():
-    vehicle_id_entering = []
-
-    for lane in entering_lanes:
-        vehicle_id_entering.extend(traci.lane.getLastStepVehicleIDs(lane))
-
-    return vehicle_id_entering
 
 
 def get_vehicles_id_incoming():
@@ -211,39 +203,11 @@ def get_vehicles_id_incoming():
     return vehicles_incoming
 
 
-def update_vehicles_state(dic_vehicles):
-    """ Update a dictionnary with vehicles classed based on the current state of the simulation"""
-    vehicle_id_list = traci.vehicle.getIDList()
-    vehicle_id_entering_list = get_vehicle_id_entering()
-    for vehicle_id in (set(dic_vehicles.keys()) - set(vehicle_id_list)):
-        del (dic_vehicles[vehicle_id])
-
-    for vehicle_id in vehicle_id_list:
-        if (vehicle_id in dic_vehicles.keys()) == False:
-            vehicle = Vehicles()
-            vehicle.id = vehicle_id
-            traci.vehicle.subscribe(vehicle_id, (tc.VAR_LANE_ID, tc.VAR_SPEED))
-            vehicle.speed = traci.vehicle.getSubscriptionResults(vehicle_id).get(64)
-            current_sumo_time = traci.simulation.getCurrentTime() / 1000
-            vehicle.enter_time = current_sumo_time
-            # if it enters and stops at the very first
-            if (vehicle.speed < 0.1) and (vehicle.first_stop_time == -1):
-                vehicle.first_stop_time = current_sumo_time
-            dic_vehicles[vehicle_id] = vehicle
-        else:
-            dic_vehicles[vehicle_id].speed = traci.vehicle.getSubscriptionResults(vehicle_id).get(64)
-            if (dic_vehicles[vehicle_id].speed < 0.1) and (dic_vehicles[vehicle_id].first_stop_time == -1):
-                dic_vehicles[vehicle_id].first_stop_time = traci.simulation.getCurrentTime() / 1000
-            if (vehicle_id in vehicle_id_entering_list) == False:
-                dic_vehicles[vehicle_id].entering = False
-
-    return dic_vehicles
-
-
-""" Function to plot state of the traffic as an image"""
-
-
 def vehicle_location_mapper(coordinate, area_length=600, area_width=600):
+    """
+    Function to plot state of the traffic as an image.
+    Not useful but we keep it to create the "image" for the convolutional network
+    """
     transformX = math.floor(coordinate[0] / grid_width)
     transformY = math.floor((area_length - coordinate[1]) / grid_width)
     length_num_grids = int(area_length / grid_width)
@@ -270,13 +234,3 @@ def plotcurrenttrafic():
 
 def end_sumo():
     traci.close()
-
-
-def plottraffic(N):
-    """ Plot evolution of the traffic for N steps without changing the phase"""
-    for i in range(N):
-        length_num_grids = int(area_length / grid_width)
-        for i in range(10):
-            traci.simulationStep()
-        plotcurrenttrafic()
-        print(get_state_sumo())

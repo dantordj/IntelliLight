@@ -262,19 +262,14 @@ class QLearningAgent(LearningAgent):
         # assign an integer between 1 and 511 to each state
         phase = int(get_phase() == wgreen)
         state = np.array([0, 0, 0, 0])
+        count_incoming, speed_incoming = get_state_sumo()
 
-        for line, num_vehicles in get_state_sumo().items():
-            try:
-                i = int(line[4]) - 1
-                if i < 0:
-                    continue
-            except:
-                continue
-            if num_vehicles < 3:
+        for i, (key, value) in enumerate(count_incoming.items()):
+            if value < 3:
                 state[i] = 0
-            elif num_vehicles < 5:
+            elif value < 5:
                 state[i] = 1
-            elif num_vehicles < 7:
+            elif value < 7:
                 state[i] = 2
             else:
                 state[i] = 3
@@ -322,37 +317,44 @@ class MyNormalizer(object):
 
 class LinQAgent(LearningAgent):
 
-    def __init__(self, mode="lin"):
+    def __init__(self, mode="lin", features=None):
         super(LinQAgent, self).__init__()
 
         self.mode = mode
+        self.features = features
 
-        if self.mode == "lin":
-            self.network = LinearNet()
-            self.lr = 0.1
-            self.n_features = 16
-
-        else:
-            self.network = DeepNet()
-            self.lr = 1e-2
-            self.n_features = 6
+        if features is None:
+            self.features = ["count_incoming"]
 
         # parameters
         self.cache_max = 20000
-        self.observe_steps = 5000
+        self.observe_steps = 1000
         self.epochs_per_train = 30
 
         # attributes
         self.count = 0
         self.cache = []
+        self.n_inputs = 0
 
         self.is_training = True
         self.is_online = True
         self.has_trained = False
 
+        self.n_inputs = 4 * len(self.features)
+
+        if self.mode == "lin":
+            self.n_inputs = self.n_inputs * 4
+            self.network = LinearNet(self.n_inputs)
+            self.lr = 0.1
+
+        else:
+            self.n_inputs += 2
+            self.network = DeepNet(self.n_inputs)
+            self.lr = 1e-2
+
         self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
-        self.normalizer = MyNormalizer(self.n_features)
+        self.normalizer = MyNormalizer(self.n_inputs)
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
@@ -361,7 +363,6 @@ class LinQAgent(LearningAgent):
 
         torch.save(self.network.state_dict(), os.path.join(path, "weights"))
         self.normalizer.save(path)
-        self.steps = self.normalizer.n.copy()
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
@@ -370,6 +371,7 @@ class LinQAgent(LearningAgent):
         self.network.load_state_dict(torch.load(path))
         self.normalizer.load(os.path.join("saved_agents", name))
         self.has_trained = True
+        self.steps = self.normalizer.n[0]
 
     def q_value(self, state, action):
 
@@ -450,25 +452,38 @@ class LinQAgent(LearningAgent):
         self.cache = []
 
     def get_state(self):
-        phase = int(get_phase() == wgreen)
-        incoming_vehicles = np.zeros(4)
 
-        for line, num_vehicles in get_state_sumo().items():
-            try:
-                i = int(line[4]) - 1
-                if i < 0:
-                    continue
-            except:
-                continue
-            incoming_vehicles[i] = int(num_vehicles)
+        phase = int(get_phase() == wgreen)
+        features = []
+
+        count_incoming, speed_incoming = get_state_sumo()
+
+        if "count_incoming" in self.features:
+            for key, value in count_incoming.items():
+                features.append(value)
+
+        for key, value in speed_incoming.items():
+
+            value_array = np.array(value)
+
+            if "max_speed" in self.features:
+                features.append(np.max(value_array) if len(value) > 0 else 0)
+
+            if "min_speed" in self.features:
+                features.append(np.min(value_array) if len(value) > 0 else 0)
+
+            if "median_speed" in self.features:
+                features.append(np.median(value_array) if len(value) > 0 else 0)
+
+            if "mean_speed" in self.features:
+                features.append(np.mean(value_array) if len(value) > 0 else 0)
 
         if self.mode == "lin":
-            state = np.zeros(8)
-            state[phase * 4: (phase + 1) * 4] = incoming_vehicles
+            state = np.zeros(len(features) * 2)
+            state[phase * len(features): (phase + 1) * len(features)] = np.array(features)
         else:
-            state = np.zeros(4 + 1)
-            state[:-1] = incoming_vehicles
-            state[-1] = phase
+            features.append(phase)
+            state = np.array(features)
 
         return state
 
