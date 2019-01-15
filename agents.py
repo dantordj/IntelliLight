@@ -1,12 +1,6 @@
-from utils import get_phase, wgreen, ngreen, yellow_nw, yellow_wn, get_state_sumo
+from utils import get_phase, wgreen, ngreen, get_state_sumo
 import os
 import numpy as np
-from neural_nets import ConvNet, LinearNet, DeepNet
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import seaborn
 
 
 class Agent(object):
@@ -70,8 +64,6 @@ class SimpleAgent(Agent):
         return change
 
 
-
-
 class MyNormalizer(object):
     def __init__(self, num_inputs):
         self.n = np.zeros(num_inputs)
@@ -82,14 +74,14 @@ class MyNormalizer(object):
     def observe(self, x):
         self.n += 1.
         last_mean = self.mean.copy()
-        
-        self.mean += (x-self.mean)/self.n
-        self.mean_diff += (x-last_mean)*(x-self.mean)
-        self.var = np.clip(self.mean_diff/self.n, a_min=1e-2, a_max=1e12)
+
+        self.mean += (x - self.mean) / self.n
+        self.mean_diff += (x - last_mean) * (x - self.mean)
+        self.var = np.clip(self.mean_diff / self.n, a_min=1e-2, a_max=1e12)
 
     def normalize(self, inputs):
         obs_std = np.sqrt(self.var)
-        return (inputs - self.mean)/obs_std
+        return (inputs - self.mean) / obs_std
 
     def save(self, path):
         to_store = np.array([self.n, self.mean, self.mean_diff, self.var])
