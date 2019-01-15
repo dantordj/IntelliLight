@@ -8,7 +8,11 @@ n_steps = 5
 
 def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_gui=False):
     start_sumo(flow_type, lane_type=lane_type, use_gui=use_gui)
-    env = sumoEnv()
+
+    if flow_type == "multi_agent":
+        env = sumoEnv(multi_agent=True)
+    else:
+        env = sumoEnv()
     reward = 0
     n_switches = 0
 

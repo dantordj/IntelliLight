@@ -1,0 +1,1 @@
+netgenerate --grid --grid.number=5 --grid.length=60 -j traffic_light --tls.green.time 30 --tls.yellow.time 5 --output-file=grid.net.xml

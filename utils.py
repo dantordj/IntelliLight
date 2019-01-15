@@ -25,8 +25,15 @@ else:
 area_length = 600
 grid_width = 4
 
-entering_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
-                  'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
+entering_lanes_node0 = [
+    'edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
+    'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2'
+]
+
+entering_lanes = {
+    "node0": entering_lanes_node0,
+    "C2": ["C3C2_0", "D2C2_0", "C1C2_0", "B2C2_0"]
+}
 
 east_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2']  # we should check this
 west_lanes = ['edge2-0_0', 'edge2-0_1', 'edge2-0_2']
@@ -54,12 +61,12 @@ phase_encoder = {
 }
 
 
-def get_phase():
-    return phase_decoder[traci.trafficlight.getPhase("node0")]
+def get_phase(node="node0"):
+    return phase_decoder[traci.trafficlight.getPhase(node)]
 
 
-def set_phase(phase):
-    traci.trafficlight.setPhase("node0", phase_encoder[phase])
+def set_phase(phase, node="node0"):
+    traci.trafficlight.setPhase(node, phase_encoder[phase])
 
 
 """ Functions to interact with sumo """
@@ -98,7 +105,7 @@ def set_traffic_file(
     sumo_cfg.write(sumo_config_file_output_name)
 
 
-def start_sumo(traffic, lane_type="uniform", use_gui=False):
+def start_sumo(traffic, lane_type="uniform", use_gui=False, mutli_agent=False):
     """ Start sumo, 3 config possibles"""
     trafic_files = {
         "alternate": "cross.2phases_rou1_switch_rou0.xml",
@@ -106,33 +113,40 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False):
         "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
         "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
         "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml",
-        "my_flow": "my_flow.xml"
+        "my_flow": "my_flow.xml",
+        "mutli_agent": "flow.xml"
     }
 
-    set_traffic_file(
-        os.path.join("data", "one_run", "cross.sumocfg"),
-        os.path.join("data", "one_run", "cross.temp_config.sumocfg"),
-        [trafic_files[traffic]]
-    )
+    if traffic != "multi_agent":
+        set_traffic_file(
+            os.path.join("data", "one_run", "cross.sumocfg"),
+            os.path.join("data", "one_run", "cross.temp_config.sumocfg"),
+            [trafic_files[traffic]]
+        )
 
-    file_path = os.path.join("data", "one_run", "cross.temp_config.sumocfg")
+        file_path = os.path.join("data", "one_run", "cross.temp_config.sumocfg")
 
-    sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
-    traci.start(sumoCmd)
+        sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
+        traci.start(sumoCmd)
 
-    speed_dic = {
-        "uniform": {"fast_lane": 19.44, "slow_lane": 19.44},
-        "slow_lane": {"fast_lane": 19.55, "slow_lane": 5.00}
-    }
-    print("Starting sumo %s"%lane_type)
-    slow_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2']
-    fast_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
+        speed_dic = {
+            "uniform": {"fast_lane": 19.44, "slow_lane": 19.44},
+            "slow_lane": {"fast_lane": 19.55, "slow_lane": 5.00}
+        }
+        print("Starting sumo %s"%lane_type)
+        slow_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2']
+        fast_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
-    for lane_id in slow_lanes:
-        traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["slow_lane"])
+        for lane_id in slow_lanes:
+            traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["slow_lane"])
 
-    for lane_id in fast_lanes:
-        traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["fast_lane"])
+        for lane_id in fast_lanes:
+            traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["fast_lane"])
+    else:
+        file_path = os.path.join("data", "multi_agent", "conf")
+
+        sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
+        traci.start(sumoCmd)
 
     for i in range(3):
         traci.simulationStep()
@@ -194,11 +208,11 @@ def get_overall_queue_length(listLanes, blocked_only=False):
     return overall_queue_length
 
 
-def get_vehicles_id_incoming():
+def get_vehicles_id_incoming(node="node0"):
     vehicles_incoming = []
 
     for vehicle_id in traci.vehicle.getIDList():
-        if traci.vehicle.getLaneID(vehicle_id) in entering_lanes:
+        if traci.vehicle.getLaneID(vehicle_id) in entering_lanes[node]:
             vehicles_incoming.append(vehicle_id)
 
     return vehicles_incoming
@@ -231,6 +245,7 @@ def plotcurrenttrafic():
         mapOfCars[transform_tuple[0], transform_tuple[1]] = 1
     plt.imshow(mapOfCars)
     plt.show()
+
 
 def get_image_traffic():
     length_num_grids = int(area_length / grid_width)

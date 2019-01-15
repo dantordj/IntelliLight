@@ -24,15 +24,16 @@ class Agent(object):
 
 
 class ConstantAgent(Agent):
-    def __init__(self, period=30):
+    def __init__(self, period=30, node="node0"):
         super(ConstantAgent, self).__init__()
         self.period = period
         self.count = 0
+        self.node = node
 
     def choose_action(self):
         self.count += 1
 
-        if (self.count > self.period) and (get_phase() in [wgreen, ngreen]):
+        if (self.count > self.period) and (get_phase(self.node) in [wgreen, ngreen]):
             self.count = 0
             return 1
         return 0

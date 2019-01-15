@@ -4,17 +4,19 @@ from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, ge
 
 class sumoEnv():
 
-    def __init__(self):
+    def __init__(self, multi_agent=False):
         self.vehicle_dict = {}
         self.n_actions = 2
         self.all_vehicles = {}
         self.arrived_vehicles = {}
+        self.multi_agent = multi_agent
 
-    def get_reward(self, blocked_only=True):
-        # queue = get_overall_queue_length(listLanes, blocked_only=blocked_only)
-        # w_time = get_overall_waiting_time(listLanes)
+    def get_reward(self, node="node0"):
 
-        incoming_vehicles = get_vehicles_id_incoming()
+        if self.multi_agent:
+            node = "C2"
+
+        incoming_vehicles = get_vehicles_id_incoming(node)
 
         reward = 0
         for id_ in incoming_vehicles:
@@ -56,17 +58,20 @@ class sumoEnv():
 
         return avg_travel_time / len(self.all_vehicles)
 
-    def step(self, change=True):
+    def step(self, change=True, node="node0"):
 
-        if change and get_phase() in [yellow_wn, yellow_nw]:
+        if self.multi_agent:
+            node = "C2"
+
+        if change and get_phase(node) in [yellow_wn, yellow_nw]:
             print("cant change phase since the light is already yellow")
 
         if change:
-            if get_phase() == wgreen:
-                set_phase(yellow_wn)
+            if get_phase(node) == wgreen:
+                set_phase(yellow_wn, node)
 
-            elif get_phase() == ngreen:
-                set_phase(yellow_nw)
+            elif get_phase(node) == ngreen:
+                set_phase(yellow_nw, node)
 
         traci.simulationStep()
 

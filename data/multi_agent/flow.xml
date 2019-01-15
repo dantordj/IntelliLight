@@ -1,0 +1,3 @@
+<routes>
+    <flow id="01" type="Car" begin="0" end="5000" probability="0.1" from="A0A1" to="B1B2" departPos="1" departLane="best" departSpeed="10.0"/>
+</routes>

@@ -1,0 +1,9 @@
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netgenerateConfiguration.xsd">
+
+    <input>
+        <net-file value="grid.net.xml" />
+        <additional-files value="car.xml" />
+        <route-files value="flow.xml" />
+    </input>
+
+</configuration>
