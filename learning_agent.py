@@ -1,13 +1,10 @@
-from utils import get_phase, wgreen, ngreen, yellow_nw, yellow_wn, get_state_sumo
-import os
-import numpy as np
-from neural_nets import ConvNet, LinearNet, DeepNet
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 import seaborn
+import numpy as np
+import matplotlib.pyplot as plt
+
+from utils import get_phase, yellow_nw, yellow_wn
 from agents import Agent
+
 
 class LearningAgent(Agent):
     def __init__(self):
@@ -20,7 +17,6 @@ class LearningAgent(Agent):
         self.epsilon = 0.1
         self.action = 0
         self.last_state = 0
-        
 
     def set_is_training(self, is_training):
         self.is_training = is_training
