@@ -31,7 +31,6 @@ def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_g
             env.step(0)
             r = env.get_reward()
             current_reward += r
-            print(r)
             t += 1
         if t % 100 == 0:
             print("t = ", t)

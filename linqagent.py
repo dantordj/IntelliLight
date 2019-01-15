@@ -1,20 +1,20 @@
-from utils import get_phase, wgreen, ngreen, yellow_nw, yellow_wn, get_state_sumo
 import os
 import numpy as np
-from neural_nets import ConvNet, LinearNet, DeepNet
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import seaborn
+
+from utils import get_phase, wgreen, get_state_sumo
+from neural_nets import ConvNet, LinearNet, DeepNet
 from learning_agent import LearningAgent
 from agents import MyNormalizer
 
 
 class LinQAgent(LearningAgent):
 
-    def __init__(self, mode="lin", features=None):
-        super(LinQAgent, self).__init__()
+    def __init__(self, mode="lin", features=None, node="node0"):
+        super(LinQAgent, self).__init__(node=node)
 
         self.mode = mode
         self.features = features
@@ -48,8 +48,6 @@ class LinQAgent(LearningAgent):
             self.n_inputs -= 4
             self.network = ConvNet(self.n_inputs).float()
 
-
-
             self.lr = 1e-2
 
         else:
@@ -61,7 +59,7 @@ class LinQAgent(LearningAgent):
         self.loss = nn.MSELoss()
         self.normalizer = MyNormalizer(self.n_inputs)
         self.reset_cache()
-        assert (self.use_img and self.mode == "conv") or  (not self.use_img)
+        assert (self.use_img and self.mode == "conv") or (not self.use_img)
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
@@ -124,7 +122,7 @@ class LinQAgent(LearningAgent):
 
             if self.steps > self.observe_steps:
                 if self.memory_palace:
-                    phase = int(get_phase() == wgreen)
+                    phase = int(get_phase(self.node) == wgreen)
                     key = (action, phase)
                 else:
                     key = "all"
@@ -149,7 +147,6 @@ class LinQAgent(LearningAgent):
         for cache_s_a in self.cache.values():
             indices = np.random.choice(range(len(cache_s_a)), min_cache)
             cache += [cache_s_a[i] for i in indices]
-
 
         self.has_trained = True
 
@@ -192,21 +189,24 @@ class LinQAgent(LearningAgent):
 
             print("Loss: ", loss_epoch / len(cache))
 
-
         self.reset_cache()
+
     def reset_cache(self):
         if self.memory_palace:
-            self.cache = {(0,0):[], (0,1):[], (1,0):[], (1,1):[]}
+            self.cache = {(0, 0): [], (0, 1): [], (1, 0): [], (1, 1): []}
             self.cache_max = 200
         else:
             self.cache = {"all": []}
             self.cache_max = 200
 
     def get_state(self):
-        phase = int(get_phase() == wgreen)
+        phase = int(get_phase(self.node) == wgreen)
         features = []
 
-        count_incoming, speed_incoming, img = get_state_sumo()
+        if "img" in self.features:
+            self.use_img = True
+
+        count_incoming, speed_incoming, img = get_state_sumo(node=self.node, get_img=self.use_img)
 
         if "count_incoming" in self.features:
             for key, value in count_incoming.items():
@@ -228,15 +228,14 @@ class LinQAgent(LearningAgent):
             if "mean_speed" in self.features:
                 features.append(np.mean(value_array) if len(value) > 0 else 0)
 
-
         if self.mode == "lin":
             state = np.zeros(len(features) * 2)
             state[phase * len(features): (phase + 1) * len(features)] = np.array(features)
         else:
             features.append(phase)
             state = np.array(features)
+
         if "img" in self.features:
-            self.use_img = True
             return state, img
         return state
 

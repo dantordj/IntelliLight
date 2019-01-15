@@ -4,7 +4,8 @@ import numpy as np
 
 
 class Agent(object):
-    def __init__(self):
+    def __init__(self, node="node0"):
+        self.node = node
         pass
 
     def choose_action(self):
@@ -19,10 +20,9 @@ class Agent(object):
 
 class ConstantAgent(Agent):
     def __init__(self, period=30, node="node0"):
-        super(ConstantAgent, self).__init__()
+        super(ConstantAgent, self).__init__(node)
         self.period = period
         self.count = 0
-        self.node = node
 
     def choose_action(self):
         self.count += 1
@@ -34,12 +34,12 @@ class ConstantAgent(Agent):
 
 
 class SimpleAgent(Agent):
-    def __init__(self, factor):
-        super(SimpleAgent, self).__init__()
+    def __init__(self, factor, node="node0"):
+        super(SimpleAgent, self).__init__(node)
         self.factor = factor
 
     def choose_action(self):
-        count_incoming, speed_incoming, img = get_state_sumo()
+        count_incoming, speed_incoming, img = get_state_sumo(self.node)
 
         vertical_cars = 0
         horizontal_cars = 0
@@ -55,10 +55,10 @@ class SimpleAgent(Agent):
 
         change = False
 
-        if (vertical_cars > self.factor * horizontal_cars) and get_phase() == wgreen:
+        if (vertical_cars > self.factor * horizontal_cars) and get_phase(self.node) == wgreen:
             change = True
 
-        if (horizontal_cars > self.factor * vertical_cars) and get_phase() == ngreen:
+        if (horizontal_cars > self.factor * vertical_cars) and get_phase(self.node) == ngreen:
             change = True
 
         return change

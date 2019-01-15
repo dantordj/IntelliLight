@@ -40,6 +40,13 @@ west_lanes = ['edge2-0_0', 'edge2-0_1', 'edge2-0_2']
 north_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2']
 south_lanes = ['edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
+incoming_lanes_node0 = {"south": south_lanes, "north": north_lanes, "east": east_lanes, "west": west_lanes}
+
+incoming_lanes_dic = {
+    "node0": incoming_lanes_node0,
+    "C2": {"south": "C1C2_0", "north": "C3C2_0", "east": "D2C2_0", "west": "B2C2_0"}
+}
+
 # assign sumo code to each phase
 wgreen = "WGREEN"
 ngreen = "NGREEN"
@@ -152,16 +159,10 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False, mutli_agent=False):
         traci.simulationStep()
 
 
-def get_state_sumo():
+def get_state_sumo(node="node0", get_img=False):
     """ Put here what we need to define the state. For now only the number of vehicles by lines"""
-    vehicle_roads = Counter()
 
-    vehicle_id_list = traci.vehicle.getIDList()
-    for vehicle_id in vehicle_id_list:
-        road_id = traci.vehicle.getRoadID(vehicle_id)
-        vehicle_roads[road_id] += 1
-
-    incoming_lanes = {"south": south_lanes, "north": north_lanes, "east": east_lanes, "west": west_lanes}
+    incoming_lanes = incoming_lanes_dic[node]
 
     count_incoming = {}
     speed_incoming = {}
@@ -176,7 +177,10 @@ def get_state_sumo():
                 count_incoming[key] += 1
                 speed_incoming[key].append(traci.vehicle.getSpeed(vehicle_id))
 
-    img = get_image_traffic()
+    if get_img:
+        img = get_image_traffic()
+    else:
+        img = 0
     return count_incoming, speed_incoming, img
 
 

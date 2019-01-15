@@ -7,8 +7,8 @@ from agents import Agent
 
 
 class LearningAgent(Agent):
-    def __init__(self):
-        super(LearningAgent, self).__init__()
+    def __init__(self, node="node0"):
+        super(LearningAgent, self).__init__(node=node)
         self.is_training = True
         self.is_online = True
         self.steps = 0
@@ -40,7 +40,7 @@ class LearningAgent(Agent):
 
         self.steps += 1
 
-        assert get_phase() not in [yellow_wn, yellow_nw]
+        assert get_phase(self.node) not in [yellow_wn, yellow_nw]
 
         state = self.get_state()
         self.last_state = state
