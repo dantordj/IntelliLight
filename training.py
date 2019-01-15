@@ -1,5 +1,5 @@
 from utils import start_sumo, end_sumo
-from environnements import sumoEnv
+from environnements import SumoEnv
 import time
 import numpy as np
 
@@ -10,9 +10,9 @@ def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_g
     start_sumo(flow_type, lane_type=lane_type, use_gui=use_gui)
 
     if flow_type == "multi_agent":
-        env = sumoEnv(multi_agent=True)
+        env = SumoEnv(multi_agent=True)
     else:
-        env = sumoEnv()
+        env = SumoEnv()
     reward = 0
     n_switches = 0
 

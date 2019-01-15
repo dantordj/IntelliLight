@@ -1,8 +1,5 @@
-from agents import ConstantAgent, SimpleAgent
-from linqagent import LinQAgent
-from qlearning_agent import QLearningAgent
+from agents.linqagent import LinQAgent
 from training import train_agent, run_agent
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 

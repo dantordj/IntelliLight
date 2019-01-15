@@ -6,9 +6,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from utils import get_phase, wgreen, get_state_sumo
-from neural_nets import ConvNet, LinearNet, DeepNet
-from learning_agent import LearningAgent
-from agents import MyNormalizer
+from agents.neural_nets import ConvNet, LinearNet, DeepNet
+from agents.learning_agent import LearningAgent
+from agents.agents import MyNormalizer
 
 
 class LinQAgent(LearningAgent):
@@ -205,13 +205,17 @@ class LinQAgent(LearningAgent):
         if "img" in self.features:
             self.use_img = True
 
-        count_incoming, speed_incoming, img = get_state_sumo(node=self.node, get_img=self.use_img)
+        sumo_state = get_state_sumo(node=self.node, get_img=self.use_img)
 
         if "count_incoming" in self.features:
-            for key, value in count_incoming.items():
+            for key, value in sumo_state["count_incoming"].items():
                 features.append(value)
 
-        for key, value in speed_incoming.items():
+        if "count_upstream" in self.features:
+            for key, value in sumo_state["count_upstream"].items():
+                features.append(value)
+
+        for key, value in sumo_state["speed_incoming"].items():
 
             value_array = np.array(value)
 
@@ -235,7 +239,7 @@ class LinQAgent(LearningAgent):
             state = np.array(features)
 
         if "img" in self.features:
-            return state, img
+            return state, sumo_state["img"]
         return state
 
     def reset(self):

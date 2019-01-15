@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from utils import get_phase, yellow_nw, yellow_wn
-from agents import Agent
+from agents.agents import Agent
 
 
 class LearningAgent(Agent):

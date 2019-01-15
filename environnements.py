@@ -1,8 +1,8 @@
 import traci
-from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, get_vehicles_id_incoming, entering_lanes
+from utils import get_phase, set_phase, yellow_wn, yellow_nw, wgreen, ngreen, get_vehicles_id_incoming
 
 
-class sumoEnv():
+class SumoEnv:
 
     def __init__(self, multi_agent=False):
         self.vehicle_dict = {}

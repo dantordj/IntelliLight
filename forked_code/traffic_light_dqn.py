@@ -18,12 +18,10 @@ import json
 import shutil
 
 import os
-import time
 import math
-import map_computor as map_computor
-from deeplight_agent import DeeplightAgent
+from forked_code.deeplight_agent import DeeplightAgent
 
-from sumo_agent import SumoAgent
+from forked_code.sumo_agent import SumoAgent
 import xml.etree.ElementTree as ET
 
 

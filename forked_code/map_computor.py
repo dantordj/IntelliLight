@@ -16,7 +16,7 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 from sys import platform
-from sumo_agent import Vehicles
+from forked_code.sumo_agent import Vehicles
 
 ###### Please Specify the location of your traci module
 

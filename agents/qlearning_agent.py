@@ -1,14 +1,8 @@
-from utils import get_phase, wgreen, ngreen, yellow_nw, yellow_wn, get_state_sumo
+from utils import get_phase, wgreen, ngreen, get_state_sumo
 import os
 import numpy as np
-from neural_nets import ConvNet, LinearNet, DeepNet
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import seaborn
-from learning_agent import LearningAgent
-from agents import MyNormalizer
+from agents.learning_agent import LearningAgent
+
 
 class QLearningAgent(LearningAgent):
 

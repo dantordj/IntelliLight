@@ -8,15 +8,15 @@ Deep reinforcement learning agent
 '''
 
 import numpy as np
-from keras.layers import Input, Dense, Conv2D, Flatten, BatchNormalization, Activation, Multiply, Add
-from keras.models import Model, model_from_json, load_model
+from keras.layers import Input, Multiply, Add
+from keras.models import Model
 from keras.optimizers import RMSprop
-from keras.callbacks import EarlyStopping, TensorBoard
-from keras.layers.merge import concatenate, add
+from keras.callbacks import EarlyStopping
+from keras.layers.merge import concatenate
 import random
 import os
 
-from network_agent import NetworkAgent, conv2d_bn, Selector, State
+from forked_code.network_agent import NetworkAgent, Selector, State
 
 
 MEMO = "Deeplight"

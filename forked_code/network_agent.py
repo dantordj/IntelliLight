@@ -9,8 +9,8 @@ Network agent from agent.py
 
 
 import numpy as np
-from keras.layers import Input, Dense, Conv2D, Flatten, BatchNormalization, Activation, Multiply, Add
-from keras.models import Model, model_from_json, load_model
+from keras.layers import Dense, Conv2D, Flatten, BatchNormalization, Activation
+from keras.models import model_from_json, load_model
 from keras.optimizers import RMSprop
 from keras.layers.core import Dropout
 from keras.layers.pooling import MaxPooling2D
@@ -19,7 +19,8 @@ import random
 from keras.engine.topology import Layer
 import os
 
-from agent import Agent, State
+from forked_code.agent import Agent
+
 
 class Selector(Layer):
 

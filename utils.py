@@ -30,7 +30,14 @@ entering_lanes_node0 = [
 
 entering_lanes = {
     "node0": entering_lanes_node0,
-    "C2": ["C3C2_0", "D2C2_0", "C1C2_0", "B2C2_0"]
+    "C2": ["C3C2_0", "D2C2_0", "C1C2_0", "B2C2_0"],
+    "D2": ["D3D2_0", "E2D2_0", "D1D2_0", "C2D2_0"],
+    "C3": ["C4C3_0", "D3C3_0", "C2C3_0", "B3C3_0"],
+    "D3": ["D4D3_0", "E3C3_0", "D2D3_0", "C3D3_0"]
+}
+
+upstream_lanes_dic = {
+    "C2": {"south": "C0C1_0", "north": "C4C3_0", "east": "E2D2_0", "west": "A2B2_0"}
 }
 
 east_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2']  # we should check this
@@ -144,10 +151,16 @@ def get_state_sumo(node="node0", get_img=False):
     ans = {}
     incoming_lanes = incoming_lanes_dic[node]
 
+    if node == "C2":
+        upstream_lanes = upstream_lanes_dic[node]
+
     count_incoming = {}
     speed_incoming = {}
+    count_upstream = {}
+
     for key, value in incoming_lanes.items():
         count_incoming[key] = 0
+        count_upstream[key] = 0
         speed_incoming[key] = []
 
     for vehicle_id in traci.vehicle.getIDList():
@@ -157,11 +170,20 @@ def get_state_sumo(node="node0", get_img=False):
                 count_incoming[key] += 1
                 speed_incoming[key].append(traci.vehicle.getSpeed(vehicle_id))
 
+        if node == "C2":
+            for key, value in upstream_lanes.items():
+                if current_lane_id in upstream_lanes[key]:
+                    count_upstream[key] += 1
+
+    ans["count_incoming"] = count_incoming
+    ans["speed_incoming"] = speed_incoming
+
     if get_img:
-        img = get_image_traffic()
-    else:
-        img = 0
-    return count_incoming, speed_incoming, img
+        ans["img"] = get_image_traffic()
+    if node == "C2":
+        ans["count_upstream"] = count_upstream
+
+    return ans
 
 
 def is_blocked(lane, phase):
