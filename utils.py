@@ -122,9 +122,9 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False):
 
     speed_dic = {
         "uniform": {"fast_lane": 19.44, "slow_lane": 19.44},
-        "slow_lane": {"fast_lane": 19.44, "slow_lane": 10.00}
+        "slow_lane": {"fast_lane": 19.55, "slow_lane": 5.00}
     }
-
+    print("Starting sumo %s"%lane_type)
     slow_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2']
     fast_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
@@ -162,7 +162,8 @@ def get_state_sumo():
                 count_incoming[key] += 1
                 speed_incoming[key].append(traci.vehicle.getSpeed(vehicle_id))
 
-    return count_incoming, speed_incoming
+    img = get_image_traffic()
+    return count_incoming, speed_incoming, img
 
 
 def is_blocked(lane, phase):
@@ -230,6 +231,18 @@ def plotcurrenttrafic():
         mapOfCars[transform_tuple[0], transform_tuple[1]] = 1
     plt.imshow(mapOfCars)
     plt.show()
+
+def get_image_traffic():
+    length_num_grids = int(area_length / grid_width)
+    mapOfCars = np.zeros((length_num_grids, length_num_grids))
+
+    vehicle_id_list = traci.vehicle.getIDList()
+    for vehicle_id in vehicle_id_list:
+        vehicle_position = traci.vehicle.getPosition(vehicle_id)  # (double,double),tuple
+
+        transform_tuple = vehicle_location_mapper(vehicle_position)  # call the function
+        mapOfCars[int(transform_tuple[0]), int(transform_tuple[1])] = 1
+    return mapOfCars
 
 
 def end_sumo():
