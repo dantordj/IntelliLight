@@ -29,7 +29,9 @@ def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_g
             if use_gui:
                 time.sleep(0.2)
             env.step(0)
-            current_reward += env.get_reward()
+            r = env.get_reward()
+            current_reward += r
+            print(r)
             t += 1
         if t % 100 == 0:
             print("t = ", t)

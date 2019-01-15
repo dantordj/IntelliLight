@@ -1532,9 +1532,9 @@
         <phase duration="5"  state="rrrryyyyrrrryyyy"/>
     </tlLogic>
     <tlLogic id="C2" type="static" programID="0" offset="0">
-        <phase duration="30" state="GGggrrrrGGggrrrr"/>
+        <phase duration="1000000" state="GGggrrrrGGggrrrr"/>
         <phase duration="5"  state="yyyyrrrryyyyrrrr"/>
-        <phase duration="30" state="rrrrGGggrrrrGGgg"/>
+        <phase duration="1000000" state="rrrrGGggrrrrGGgg"/>
         <phase duration="5"  state="rrrryyyyrrrryyyy"/>
     </tlLogic>
     <tlLogic id="C3" type="static" programID="0" offset="0">
