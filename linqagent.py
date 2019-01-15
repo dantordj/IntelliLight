@@ -13,7 +13,7 @@ from agents import MyNormalizer
 
 class LinQAgent(LearningAgent):
 
-    def __init__(self, mode="lin", features=None, node="node0"):
+    def __init__(self, mode="lin", features=None, node="node0", memory_palace=True):
         super(LinQAgent, self).__init__(node=node)
 
         self.mode = mode
@@ -24,9 +24,9 @@ class LinQAgent(LearningAgent):
 
         # parameters
 
-        self.observe_steps = 5000
+        self.observe_steps = 1000
         self.epochs_per_train = 30
-        self.memory_palace = True
+        self.memory_palace = memory_palace
         # attributes
         self.count = 0
         self.use_img = False
@@ -168,9 +168,8 @@ class LinQAgent(LearningAgent):
                 else:
                     states = sample[0]
                     temp = np.reshape(sample[1], (len(sample[1]), 1))
-
                     q_values = torch.tensor(temp, dtype=torch.float)
-                    q = self.network.forward(states)
+                    q = self.network.forward(torch.tensor(states, dtype=torch.float))
 
                 loss = self.loss(q_values, q)
 

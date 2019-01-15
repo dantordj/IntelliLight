@@ -5,8 +5,6 @@ sys.path.append(
     os.path.join(os.environ["SUMO_HOME"], "tools")
 )
 import traci
-import traci.constants as tc
-from collections import Counter
 import xml.etree.ElementTree as ET
 import numpy as np
 import math
@@ -76,24 +74,6 @@ def set_phase(phase, node="node0"):
     traci.trafficlight.setPhase(node, phase_encoder[phase])
 
 
-""" Functions to interact with sumo """
-
-
-class Vehicles:
-    initial_speed = 5.0
-
-    def __init__(self):
-        # add what ever you need to maintain
-        self.id = None
-        self.speed = None
-        self.wait_time = None
-        self.stop_count = None
-        self.enter_time = None
-        self.has_read = False
-        self.first_stop_time = -1
-        self.entering = True
-
-
 def set_traffic_file(
         sumo_config_file_tmp_name, sumo_config_file_output_name, list_traffic_file_name
 ):
@@ -112,7 +92,7 @@ def set_traffic_file(
     sumo_cfg.write(sumo_config_file_output_name)
 
 
-def start_sumo(traffic, lane_type="uniform", use_gui=False, mutli_agent=False):
+def start_sumo(traffic, lane_type="uniform", use_gui=False):
     """ Start sumo, 3 config possibles"""
     trafic_files = {
         "alternate": "cross.2phases_rou1_switch_rou0.xml",
@@ -120,8 +100,7 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False, mutli_agent=False):
         "unequal": "cross.2phases_rou01_unequal_5_300s.xml",
         "equal_big": "cross.2phases_rou01_equal_300s_big.xml",
         "unequal_big": "cross.2phases_rou01_unequal_5_300s_big.xml",
-        "my_flow": "my_flow.xml",
-        "mutli_agent": "flow.xml"
+        "my_flow": "my_flow.xml"
     }
 
     if traffic != "multi_agent":
@@ -162,6 +141,7 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False, mutli_agent=False):
 def get_state_sumo(node="node0", get_img=False):
     """ Put here what we need to define the state. For now only the number of vehicles by lines"""
 
+    ans = {}
     incoming_lanes = incoming_lanes_dic[node]
 
     count_incoming = {}
