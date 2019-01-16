@@ -29,6 +29,8 @@ reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type, max_
 print("evaluation mode: ", reward, n_switches, avg_travel_time)
 """
 
+agent.load("multi_agent_count_upstream")
+
 agent.set_is_training(True)
 agent.set_is_online(True)
 for i in range(40):

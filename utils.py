@@ -23,19 +23,6 @@ else:
 area_length = 600
 grid_width = 4
 
-entering_lanes_node0 = [
-    'edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2',
-    'edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2'
-]
-
-entering_lanes = {
-    "node0": entering_lanes_node0,
-    "C2": ["C3C2_0", "D2C2_0", "C1C2_0", "B2C2_0"],
-    "D2": ["D3D2_0", "E2D2_0", "D1D2_0", "C2D2_0"],
-    "C3": ["C4C3_0", "D3C3_0", "C2C3_0", "B3C3_0"],
-    "D3": ["D4D3_0", "E3C3_0", "D2D3_0", "C3D3_0"]
-}
-
 upstream_lanes_dic = {
     "C2": {"south": "C0C1_0", "north": "C4C3_0", "east": "E2D2_0", "west": "A2B2_0"}
 }
@@ -46,11 +33,55 @@ north_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2']
 south_lanes = ['edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
 incoming_lanes_node0 = {"south": south_lanes, "north": north_lanes, "east": east_lanes, "west": west_lanes}
+incoming_lanes_dic = {"node0": incoming_lanes_node0}
+upstream_lanes_dic = {}
 
-incoming_lanes_dic = {
-    "node0": incoming_lanes_node0,
-    "C2": {"south": "C1C2_0", "north": "C3C2_0", "east": "D2C2_0", "west": "B2C2_0"}
-}
+alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+letter_to_int = {}
+for u in range(len(alphabet)):
+    letter_to_int[alphabet[u]] = u
+
+
+def build_incoming_lanes(node, upstream=False):
+    letter = node[0]
+    number = int(node[1])
+
+    letter_int = letter_to_int[letter]
+
+    directions = ["west", "south", "east", "north"]
+
+    ans = {}
+    for (i, j) in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
+        current_number = number + i * (2 if upstream else 1)
+        current_letter_int = letter_int + j * (2 if upstream else 1)
+        current_letter = alphabet[current_letter_int]
+
+        ans[directions[i]] = current_letter + str(current_number)
+
+    return ans
+
+
+def get_incoming_lanes(node):
+    try:
+        ans = incoming_lanes_dic[node]
+    except:
+        ans = build_incoming_lanes(node)
+        incoming_lanes_dic[node] = ans
+    return ans
+
+
+def get_upstream_lanes(node):
+    try:
+        ans = upstream_lanes_dic[node]
+    except:
+        ans = build_incoming_lanes(node, upstream=True)
+        upstream_lanes_dic[node] = ans
+    return ans
+
+
+def get_incoming_lanes_list(node):
+    return list(get_incoming_lanes(node).values())
+
 
 # assign sumo code to each phase
 wgreen = "WGREEN"
@@ -126,7 +157,7 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False):
             "uniform": {"fast_lane": 19.44, "slow_lane": 19.44},
             "slow_lane": {"fast_lane": 19.55, "slow_lane": 5.00}
         }
-        print("Starting sumo %s"%lane_type)
+        print("Starting sumo %s" % lane_type)
         slow_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2', 'edge2-0_0', 'edge2-0_1', 'edge2-0_2']
         fast_lanes = ['edge3-0_0', 'edge3-0_1', 'edge3-0_2', 'edge4-0_0', 'edge4-0_1', 'edge4-0_2']
 
@@ -149,10 +180,10 @@ def get_state_sumo(node="node0", get_img=False):
     """ Put here what we need to define the state. For now only the number of vehicles by lines"""
 
     ans = {}
-    incoming_lanes = incoming_lanes_dic[node]
+    incoming_lanes = get_incoming_lanes(node)
 
     if node == "C2":
-        upstream_lanes = upstream_lanes_dic[node]
+        upstream_lanes = get_upstream_lanes(node)
 
     count_incoming = {}
     speed_incoming = {}
@@ -218,7 +249,7 @@ def get_vehicles_id_incoming(node="node0"):
     vehicles_incoming = []
 
     for vehicle_id in traci.vehicle.getIDList():
-        if traci.vehicle.getLaneID(vehicle_id) in entering_lanes[node]:
+        if traci.vehicle.getLaneID(vehicle_id) in get_incoming_lanes_list(node):
             vehicles_incoming.append(vehicle_id)
 
     return vehicles_incoming
