@@ -5,138 +5,118 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from utils import get_phase, wgreen, get_state_sumo
-from agents.neural_nets import ConvNet, LinearNet, DeepNet
+from utils import get_phase, wgreen, get_state_sumo, yellow_nw, yellow_wn
+from agents.neural_nets import DeepNet
 from agents.learning_agent import LearningAgent
-from agents.agents import MyNormalizer
 
 
-class LinQAgent(LearningAgent):
+class OfflineNormalizer:
+    def __init__(self):
+        pass
 
-    def __init__(self, mode="lin", features=None, node="node0", memory_palace=True):
-        super(LinQAgent, self).__init__(node=node)
+    def fit(self):
+        pass
 
-        self.mode = mode
+    def normalize(self, x):
+        return x
+
+
+class OfflineAgent(LearningAgent):
+
+    def __init__(self, features=None, node="node0"):
+        super(OfflineAgent, self).__init__(node=node)
+
         self.features = features
 
         if features is None:
             self.features = ["count_incoming"]
 
-        # parameters
-
-        self.observe_steps = 1000
-        self.epochs_per_train = 30
-        self.memory_palace = memory_palace
         # attributes
         self.count = 0
         self.use_img = False
 
         self.n_inputs = 0
 
-        self.is_training = True
-        self.is_online = True
-        self.has_trained = False
-
         self.n_inputs = 4 * len(self.features)
-
-        if self.mode == "lin":
-            self.n_inputs = self.n_inputs * 4
-            self.network = LinearNet(self.n_inputs)
-            self.lr = 0.1
-        elif self.mode == "conv":
-            self.n_inputs += 2
-            self.n_inputs -= 4
-            self.network = ConvNet(self.n_inputs).float()
-
-            self.lr = 1e-2
-
-        else:
-            self.n_inputs += 2
-            self.network = DeepNet(self.n_inputs)
-            self.lr = 1e-2
+        self.n_inputs += 2
+        self.network = DeepNet(self.n_inputs)
+        self.lr = 1e-2
 
         self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
-        self.normalizer = MyNormalizer(self.n_inputs)
-        self.reset_cache()
-        assert (self.use_img and self.mode == "conv") or (not self.use_img)
-
-        self.cache_max = 2000
+        self.normalizer = OfflineNormalizer()
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
         if not os.path.exists(path):
             os.makedirs(path)
-
         torch.save(self.network.state_dict(), os.path.join(path, "weights"))
-        self.normalizer.save(path)
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
         path = os.path.join(path, "weights")
-
         self.network.load_state_dict(torch.load(path))
-        self.normalizer.load(os.path.join("saved_agents", name))
-        self.has_trained = True
-        self.steps = self.normalizer.n[0]
 
     def q_value(self, state, action):
         self.network.eval()
-        if self.use_img:
-            state, img = state
-        if self.mode == "lin":
-            current = np.zeros(2 * len(state))
-            current[action * len(state): (action + 1) * len(state)] = state.copy()
 
-        else:
-            current = np.zeros(len(state) + 1)
-            current[:len(state)] = state
-            current[-1] = action
+        current = np.zeros(len(state) + 1)
+        current[:len(state)] = state
+        current[-1] = action
 
-        if self.has_trained:
-            current = self.normalizer.normalize(current)
-            current = torch.tensor(current, dtype=torch.float)
-            if self.use_img:
-                img = torch.tensor(img, dtype=torch.double)
-
-                return self.network.forward(current, img).detach().numpy()
-            else:
-                return self.network.forward(current).detach().numpy()
-        else:
-            return 0
+        current = self.normalizer.normalize(current)
+        current = torch.tensor(current, dtype=torch.float)
+        return self.network.forward(current).detach().numpy()
 
     def remember(self, state, action, target_q):
 
-        if self.use_img:
-            state, img = state
-        if self.is_training:
+        current = np.zeros(len(state) + 1)
+        current[:len(state)] = state
+        current[-1] = action
 
-            if self.mode == "lin":
-                current = np.zeros(2 * len(state))
-                current[action * len(state): (action + 1) * len(state)] = state.copy()
-            else:
-                current = np.zeros(len(state) + 1)
-                current[:len(state)] = state
-                current[-1] = action
+        current = self.normalizer.normalize(current)
+        self.cache += [[current, target_q]]
 
-            self.normalizer.observe(current)
-            current = self.normalizer.normalize(current)
+    def choose_action(self):
 
-            if self.steps > self.observe_steps:
-                if self.memory_palace:
-                    phase = int(get_phase(self.node) == wgreen)
-                    key = (action, phase)
-                else:
-                    key = "all"
-                if self.use_img:
-                    self.cache[key] += [[current, img, target_q]]
-                else:
-                    self.cache[key] += [[current, target_q]]
+        self.steps += 1
 
-            min_cache = np.min([len(cache) for cache in self.cache.values()])
+        assert get_phase(self.node) not in [yellow_wn, yellow_nw]
 
-            if min_cache >= self.cache_max:
-                self.train_network()
+        state = self.get_state()
+        self.last_state = state
+
+        if not self.is_online:
+            # offline mode, juste change the light every n iterations
+            if self.steps % self.offline_period == 0:
+                self.action = 1
+                return 1
+            self.action = 0
+            return 0
+
+        q = np.array([self.q_value(state, i) for i in range(2)])
+
+        if np.random.uniform(0, 1) < self.epsilon and self.is_training:
+            action = np.random.choice([0, 1])
+        else:
+            action = np.argmax(q)
+
+        self.action = action
+
+        return action
+
+    def feedback(self, reward):
+
+        next_state = self.get_state()
+
+        q_next = np.array([self.q_value(next_state, i) for i in range(2)])
+        q_next = np.max(q_next)
+
+        q = reward + self.gamma * q_next
+
+        self.remember(self.last_state, self.action, q)
+
+        return
 
     def train_network(self):
 
@@ -195,8 +175,10 @@ class LinQAgent(LearningAgent):
     def reset_cache(self):
         if self.memory_palace:
             self.cache = {(0, 0): [], (0, 1): [], (1, 0): [], (1, 1): []}
+            self.cache_max = 200
         else:
             self.cache = {"all": []}
+            self.cache_max = 200
 
     def get_state(self):
         phase = int(get_phase(self.node) == wgreen)

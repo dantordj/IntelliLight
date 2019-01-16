@@ -100,7 +100,6 @@ def run_four_agents(agent, use_gui=False, max_t=2000):
         if t % 100 == 0:
             print("t = ", t)
 
-        print(rewards)
         agent.feedback(rewards)
         reward += sum(rewards.values())
 
@@ -136,12 +135,13 @@ def train_four_agents(
         print("reward: ", reward)
         print("avg_travel_time: ", avg_travel_time)
         print("n switches: ", n_switches)
+        agent.save("four_agents")
 
     for a in agent.agents.values():
         a.set_is_online(True)
 
     for i in range(epochs):
-        print("start offline epoch: ", i)
+        print("start online epoch: ", i)
 
         for j, a in enumerate(agent.agents.values()):
             a.set_is_training(False)
@@ -154,7 +154,7 @@ def train_four_agents(
         rewards.append(reward)
         avg_travel_times.append(avg_travel_time)
 
-        print("end offline epoch: ", i)
+        print("end online epoch: ", i)
         print("reward: ", reward)
         print("avg_travel_time: ", avg_travel_time)
         print("n switches: ", n_switches)
@@ -164,8 +164,10 @@ def train_four_agents(
                 a.set_is_training(False)
                 a.set_is_online(True)
 
-        reward, n_switches, avg_travel_time = run_four_agents(agent, max_t=max_t, use_gui=use_gui)
+            reward, n_switches, avg_travel_time = run_four_agents(agent, max_t=max_t, use_gui=use_gui)
 
-        print("eval number " + str(i % eval_every) + ": ", reward, n_switches, avg_travel_time)
+            print("eval number " + str(i % eval_every) + ": ", reward, n_switches, avg_travel_time)
+
+        agent.save("four_agents")
 
     return rewards, avg_travel_times
