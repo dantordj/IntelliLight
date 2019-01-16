@@ -4,7 +4,7 @@ import numpy as np
 
 
 class Agent(object):
-    def __init__(self, node="node0"):
+    def __init__(self, node="node0", **kwargs):
         self.node = node
         pass
 
