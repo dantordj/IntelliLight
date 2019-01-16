@@ -17,6 +17,7 @@ class LearningAgent(Agent):
         self.epsilon = 0.1
         self.action = 0
         self.last_state = 0
+        self.offline_period = 5
 
     def set_is_training(self, is_training):
         self.is_training = is_training
@@ -47,7 +48,7 @@ class LearningAgent(Agent):
 
         if not self.is_online:
             # offline mode, juste change the light every n iterations
-            if self.steps % 5 == 0:
+            if self.steps % self.offline_period == 0:
                 self.action = 1
                 return 1
             self.action = 0

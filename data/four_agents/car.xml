@@ -1,0 +1,3 @@
+<additional>
+<vType id="Car" accel="0.8" decel="4.5" sigma="0.5" length="3" minGap="1" maxSpeed="16.67" guiShape="passenger"/>
+</additional>

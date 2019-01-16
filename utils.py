@@ -23,9 +23,6 @@ else:
 area_length = 600
 grid_width = 4
 
-upstream_lanes_dic = {
-    "C2": {"south": "C0C1_0", "north": "C4C3_0", "east": "E2D2_0", "west": "A2B2_0"}
-}
 
 east_lanes = ['edge1-0_0', 'edge1-0_1', 'edge1-0_2']  # we should check this
 west_lanes = ['edge2-0_0', 'edge2-0_1', 'edge2-0_2']
@@ -42,7 +39,7 @@ for u in range(len(alphabet)):
     letter_to_int[alphabet[u]] = u
 
 
-def build_incoming_lanes(node, upstream=False):
+def build_incoming_lanes(node):
     letter = node[0]
     number = int(node[1])
 
@@ -51,12 +48,36 @@ def build_incoming_lanes(node, upstream=False):
     directions = ["west", "south", "east", "north"]
 
     ans = {}
-    for (i, j) in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
-        current_number = number + i * (2 if upstream else 1)
-        current_letter_int = letter_int + j * (2 if upstream else 1)
+    for u, (i, j) in enumerate([(-1, 0), (0, -1), (1, 0), (0, 1)]):
+        current_number = number + i
+        current_letter_int = letter_int + j
         current_letter = alphabet[current_letter_int]
 
-        ans[directions[i]] = current_letter + str(current_number)
+        ans[directions[u]] = current_letter + str(current_number) + node + "_0"
+
+    return ans
+
+
+def build_upstream_lanes(node):
+    letter = node[0]
+    number = int(node[1])
+
+    letter_int = letter_to_int[letter]
+
+    directions = ["west", "south", "east", "north"]
+
+    ans = {}
+    for u, (i, j) in enumerate([(-1, 0), (0, -1), (1, 0), (0, 1)]):
+        current_number = number + i
+        current_letter_int = letter_int + j
+        current_letter = alphabet[current_letter_int]
+
+        upstream_number = number + i * 2
+        upstream_letter_int = letter_int + j * 2
+        upstream_letter = alphabet[upstream_letter_int]
+
+        ans[directions[u]] = upstream_letter + str(upstream_number)
+        ans[directions[u]] += current_letter + str(current_number) + "_0"
 
     return ans
 
@@ -74,7 +95,7 @@ def get_upstream_lanes(node):
     try:
         ans = upstream_lanes_dic[node]
     except:
-        ans = build_incoming_lanes(node, upstream=True)
+        ans = build_upstream_lanes(node)
         upstream_lanes_dic[node] = ans
     return ans
 
@@ -141,7 +162,19 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False):
         "my_flow": "my_flow.xml"
     }
 
-    if traffic != "multi_agent":
+    if traffic == "multi_agent":
+        file_path = os.path.join("data", "multi_agent", "conf")
+
+        sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
+        traci.start(sumoCmd)
+
+    elif traffic == "four_agents":
+        file_path = os.path.join("data", "four_agents", "conf")
+
+        sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
+        traci.start(sumoCmd)
+
+    else:
         set_traffic_file(
             os.path.join("data", "one_run", "cross.sumocfg"),
             os.path.join("data", "one_run", "cross.temp_config.sumocfg"),
@@ -166,11 +199,6 @@ def start_sumo(traffic, lane_type="uniform", use_gui=False):
 
         for lane_id in fast_lanes:
             traci.lane.setMaxSpeed(lane_id, speed_dic[lane_type]["fast_lane"])
-    else:
-        file_path = os.path.join("data", "multi_agent", "conf")
-
-        sumoCmd = [sumo_gui_binary_path if use_gui else sumo_binary_path, "-c", file_path]
-        traci.start(sumoCmd)
 
     for i in range(3):
         traci.simulationStep()
@@ -182,7 +210,7 @@ def get_state_sumo(node="node0", get_img=False):
     ans = {}
     incoming_lanes = get_incoming_lanes(node)
 
-    if node == "C2":
+    if node != "node0":
         upstream_lanes = get_upstream_lanes(node)
 
     count_incoming = {}
@@ -201,7 +229,7 @@ def get_state_sumo(node="node0", get_img=False):
                 count_incoming[key] += 1
                 speed_incoming[key].append(traci.vehicle.getSpeed(vehicle_id))
 
-        if node == "C2":
+        if node != "node0":
             for key, value in upstream_lanes.items():
                 if current_lane_id in upstream_lanes[key]:
                     count_upstream[key] += 1
@@ -211,7 +239,7 @@ def get_state_sumo(node="node0", get_img=False):
 
     if get_img:
         ans["img"] = get_image_traffic()
-    if node == "C2":
+    if node != "node0":
         ans["count_upstream"] = count_upstream
 
     return ans

@@ -76,3 +76,21 @@ class SumoEnv:
         traci.simulationStep()
 
         self.update_vehicles_dic()
+
+    def step_multi_agents(self, actions):
+
+        for node, change in actions.items():
+
+            if change and get_phase(node) in [yellow_wn, yellow_nw]:
+                print("cant change phase since the light is already yellow")
+
+            if change:
+                if get_phase(node) == wgreen:
+                    set_phase(yellow_wn, node)
+
+                elif get_phase(node) == ngreen:
+                    set_phase(yellow_nw, node)
+
+        traci.simulationStep()
+
+        self.update_vehicles_dic()
