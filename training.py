@@ -166,7 +166,7 @@ def train_four_agents(
 
             reward, n_switches, avg_travel_time = run_four_agents(agent, max_t=max_t, use_gui=use_gui)
 
-            print("eval number " + str(i % eval_every) + ": ", reward, n_switches, avg_travel_time)
+            print("eval number " + str(i // eval_every) + ": ", reward, n_switches, avg_travel_time)
 
         agent.save("four_agents")
 
