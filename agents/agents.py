@@ -39,19 +39,11 @@ class SimpleAgent(Agent):
         self.factor = factor
 
     def choose_action(self):
-        count_incoming, speed_incoming, img = get_state_sumo(self.node)
+        ans = get_state_sumo(self.node)
+        count_incoming = ans["count_incoming"]
 
-        vertical_cars = 0
-        horizontal_cars = 0
-        for line, num_vehicles in count_incoming.items():
-            try:
-                i = int(line[4])
-            except:
-                continue
-            if i in [3, 4]:
-                vertical_cars += num_vehicles
-            elif i in [1, 2]:
-                horizontal_cars += num_vehicles
+        vertical_cars = count_incoming["south"] + count_incoming["north"]
+        horizontal_cars = count_incoming["east"] + count_incoming["west"]
 
         change = False
 

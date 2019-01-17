@@ -1,23 +1,9 @@
-import os
-import numpy as np
-
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
-from utils import get_phase, wgreen, get_state_sumo
 from agents.linqagent import LinQAgent
-from agents.fully_offline import OfflineAgent
 
 
 class MultiAgentWrapper:
 
-    def __init__(self, agent_class=LinQAgent, offsets=None, mode="deep", features=None, memory_palace=True):
-        self.features = features
-        self.memory_palace = memory_palace
-
-        if features is None:
-            self.features = ["count_incoming"]
+    def __init__(self, agent_class=LinQAgent, offsets=None, **kwargs):
 
         nodes = ["C2", "D2", "C3", "D3"]
 
@@ -29,7 +15,7 @@ class MultiAgentWrapper:
 
         for node in nodes:
             self.agents[node] = agent_class(
-                mode=mode, features=self.features, node=node, memory_palace=self.memory_palace
+                node=node, **kwargs
             )
 
             self.agents[node].offline_period = offsets[node]
@@ -56,3 +42,21 @@ class MultiAgentWrapper:
     def reset(self):
         for agent in self.agents.values():
             agent.reset()
+
+    def set_is_online(self, is_online=True):
+        for node, agent in self.agents.items():
+            agent.set_is_online(is_online)
+
+    def set_is_training(self, is_training=True):
+        for node, agent in self.agents.items():
+            agent.set_is_training(is_training)
+
+    def train(self):
+        for node, agent in self.agents.items():
+            print("training agent ", node)
+            agent.train_network()
+            print("")
+            print("")
+            print("")
+            print("")
+            print("")

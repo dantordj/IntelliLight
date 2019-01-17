@@ -1,4 +1,4 @@
-from agents import ConstantAgent, SimpleAgent
+from agents.agents import ConstantAgent, SimpleAgent
 from training import run_agent
 import matplotlib.pyplot as plt
 
@@ -12,7 +12,7 @@ for factor in factors:
     print("factor = ", factor)
 
     agent = SimpleAgent(factor=factor)
-    reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type, use_gui=False, max_t=5000)
+    reward, n_switches, avg_travel_time = run_agent(agent, flow_type=flow_type, use_gui=True, max_t=5000)
     rewards.append(reward)
     travel_times.append(avg_travel_time)
 

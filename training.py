@@ -17,7 +17,7 @@ def run_agent(agent, max_t=1000, flow_type="unequal", lane_type="uniform", use_g
     n_switches = 0
 
     t = 0
-    while (t < max_t):
+    while t < max_t:
         action = agent.choose_action()
         n_switches += int(action)
 
@@ -81,7 +81,7 @@ def run_four_agents(agent, use_gui=False, max_t=2000):
     n_switches = 0
 
     t = 0
-    while (t < max_t):
+    while t < max_t:
         actions = agent.choose_action()
         n_switches += sum(actions.values())
 

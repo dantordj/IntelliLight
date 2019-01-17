@@ -44,38 +44,51 @@ class OfflineAgent(LearningAgent):
 
         self.optim = torch.optim.Adam(self.network.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
-        self.normalizer = OfflineNormalizer()
+        self.action_states = []
+        self.rewards = []
+        self.next_states = []
+        self.has_trained = False
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
         if not os.path.exists(path):
             os.makedirs(path)
         torch.save(self.network.state_dict(), os.path.join(path, "weights"))
+        np.savetxt(os.path.join(path, "actions_states"), self.action_states)
+        np.savetxt(os.path.join(path, "rewards"), self.rewards)
+        np.savetxt(os.path.join(path, "next_states"), self.next_states)
 
     def load(self, name):
         path = os.path.join("saved_agents", name)
-        path = os.path.join(path, "weights")
-        self.network.load_state_dict(torch.load(path))
+        self.network.load_state_dict(torch.load(os.path.join(path, "weights")))
+
+        self.action_states = list(np.loadtxt(os.path.join(path, "actions_states")))
+        self.rewards = list(np.loadtxt(os.path.join(path, "rewards")))
+        self.next_states = list(np.loadtxt(os.path.join(path, "next_states")))
 
     def q_value(self, state, action):
+
+        if not self.has_trained:
+            return 0
+
         self.network.eval()
 
         current = np.zeros(len(state) + 1)
         current[:len(state)] = state
         current[-1] = action
 
-        current = self.normalizer.normalize(current)
         current = torch.tensor(current, dtype=torch.float)
         return self.network.forward(current).detach().numpy()
 
-    def remember(self, state, action, target_q):
+    def remember(self, state, action, reward, next_state):
 
         current = np.zeros(len(state) + 1)
         current[:len(state)] = state
         current[-1] = action
 
-        current = self.normalizer.normalize(current)
-        self.cache += [[current, target_q]]
+        self.action_states.append(current)
+        self.rewards.append(reward)
+        self.next_states.append(next_state)
 
     def choose_action(self):
 
@@ -109,76 +122,55 @@ class OfflineAgent(LearningAgent):
 
         next_state = self.get_state()
 
-        q_next = np.array([self.q_value(next_state, i) for i in range(2)])
-        q_next = np.max(q_next)
-
-        q = reward + self.gamma * q_next
-
-        self.remember(self.last_state, self.action, q)
-
-        return
+        self.remember(self.last_state, self.action, reward, next_state)
 
     def train_network(self):
+        self.epochs_per_train = 30
+        self.n_iteration = int(- np.log(1000) / np.log(self.gamma))
 
-        min_cache = np.min([len(cache) for cache in self.cache.values()])
-        if min_cache == 0:
-            print("no cache, no training")
-            return
+        rewards = np.array(self.rewards)
 
-        cache = []
-        for cache_s_a in self.cache.values():
-            indices = np.random.choice(range(len(cache_s_a)), min_cache)
-            cache += [cache_s_a[i] for i in indices]
+        print("dataset size: ", len(self.action_states))
 
-        self.has_trained = True
+        next_states0 = np.zeros((self.next_states.shape[0], self.next_states.shape[1] + 1))
+        next_states1 = np.zeros((self.next_states.shape[0], self.next_states.shape[1] + 1))
 
-        self.network.train()
-        for i in range(self.epochs_per_train):
-            loss_epoch = 0
-            data_loader = DataLoader(cache, batch_size=10000, shuffle=True)
-            count = 0
-            for sample in data_loader:
-                count += 1
+        next_states0[:, :-1] = self.next_states.copy()
+        next_states1[:, :-1] = self.next_states.copy()
+
+        next_states0[:, -1] = 0
+        next_states1[:, -1] = 1
+
+        q_values = np.zeros((self.next_states.shape[0], 2))
+
+        for j in range(self.n_iteration):
+            print("iteration number ", j)
+
+            if self.has_trained:
+                q_values[:, 0] = self.network.forward(torch.tensor(next_states0, dtype=torch.float)).detach().numpy()[:, 0]
+                q_values[:, 1] = self.network.forward(torch.tensor(next_states0, dtype=torch.float)).detach().numpy()[:, 0]
+
+            target = rewards + self.gamma * np.max(q_values, axis=1)
+            target = np.reshape(target, (len(target), 1))
+
+            self.network.train()
+
+            for i in range(self.epochs_per_train):
                 self.optim.zero_grad()
-                if self.use_img:
-                    states = sample[0]
-                    imgs = sample[1]
-                    temp = np.reshape(sample[2], (len(sample[2]), 1))
-                    q_values = torch.tensor(temp, dtype=torch.float)
 
-                    q = self.network.forward(states, imgs)
-                else:
-                    states = sample[0]
-                    temp = np.reshape(sample[1], (len(sample[1]), 1))
-                    q_values = torch.tensor(temp, dtype=torch.float)
-                    q = self.network.forward(torch.tensor(states, dtype=torch.float))
-
-                loss = self.loss(q_values, q)
+                pred = self.network.forward(torch.tensor(self.action_states, dtype=torch.float))
+                loss = self.loss(torch.tensor(target, dtype=torch.float), pred)
 
                 numpy_loss = loss.detach().numpy()
-                loss_epoch += numpy_loss
 
                 loss.backward()
                 self.optim.step()
 
-            if i == 0:
-                l1_crit = nn.L1Loss(reduction="sum")
-                reg_loss = 0
-                for param in self.network.parameters():
-                    reg_loss += l1_crit(param, torch.zeros_like(param))
-                print("reg loss: ", reg_loss.detach().numpy())
+                print("Loss: ", numpy_loss / len(self.action_states))
 
-            print("Loss: ", loss_epoch / len(cache))
-
-        self.reset_cache()
-
-    def reset_cache(self):
-        if self.memory_palace:
-            self.cache = {(0, 0): [], (0, 1): [], (1, 0): [], (1, 1): []}
-            self.cache_max = 200
-        else:
-            self.cache = {"all": []}
-            self.cache_max = 200
+            self.has_trained = True
+            print("")
+            print("")
 
     def get_state(self):
         phase = int(get_phase(self.node) == wgreen)
@@ -225,5 +217,4 @@ class OfflineAgent(LearningAgent):
         return state
 
     def reset(self):
-        if self.is_training:
-            self.train_network()
+        pass
