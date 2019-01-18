@@ -9,9 +9,9 @@ np.random.seed(2)
 
 my_agent_class = OfflineAgent
 
-features = ["count_incoming", "count_upstream"]
+features = ["count_incoming", "count_upstream", "mean_speed"]
 agent = MultiAgentWrapper(
-    agent_class=my_agent_class
+    agent_class=my_agent_class, features=features
 )
 
 agent.set_is_online(False)
@@ -25,7 +25,6 @@ for i in range(30):
     reward, n_switches, avg_travel_time = run_four_agents(agent=agent, use_gui=False, max_t=5000)
     print("i: ", i)
     print("reward, n_switches, avg_travel_time: ", reward, n_switches, avg_travel_time)
-    agent.save("offline")
+    agent.save("offline_big_flow_all_features")
 
-agent.train()
 

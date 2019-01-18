@@ -1,0 +1,17 @@
+<routes>
+    <flow id="01" type="Car" begin="0" end="5000" probability="0.05" from="A0A1" to="F4F5" departPos="1" departLane="best" departSpeed="10.0"/>
+    <flow id="02" type="Car" begin="0" end="5000" probability="0.05" from="F5F4" to="A1A0" departPos="1" departLane="best" departSpeed="10.0"/>
+
+    <flow id="03" type="Car" begin="0" end="5000" probability="0.05" from="A5A4" to="F1F0" departPos="1" departLane="best" departSpeed="10.0"/>
+    <flow id="04" type="Car" begin="0" end="5000" probability="0.05" from="E0E1" to="A4A5" departPos="1" departLane="best" departSpeed="10.0"/>
+
+    <flow id="05" type="Car" begin="0" end="2000" probability="0.08" from="C0C1" to="C4C5" departPos="1" departLane="best" departSpeed="10.0"/>
+    <flow id="06" type="Car" begin="1000" end="3000" probability="0.08" from="C5C4" to="C1C0" departPos="1" departLane="best" departSpeed="10.0"/>
+
+    <flow id="07" type="Car" begin="2000" end="4000" probability="0.08" from="A2B2" to="E2F2" departPos="1" departLane="best" departSpeed="10.0"/>
+    <flow id="08" type="Car" begin="3000" end="5000" probability="0.08" from="F2E2" to="B2A2" departPos="1" departLane="best" departSpeed="10.0"/>
+
+    <flow id="09" type="Car" begin="1000" end="2000" probability="0.08" from="D0D1" to="D4D5" departPos="1" departLane="best" departSpeed="10.0"/>
+    <flow id="10" type="Car" begin="4000" end="5000" probability="0.08" from="A3B3" to="E3F3" departPos="1" departLane="best" departSpeed="10.0"/>
+
+</routes>

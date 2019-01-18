@@ -31,6 +31,8 @@ class OfflineAgent(LearningAgent):
         if features is None:
             self.features = ["count_incoming"]
 
+        print(self.features)
+
         # attributes
         self.count = 0
         self.use_img = False
@@ -48,6 +50,9 @@ class OfflineAgent(LearningAgent):
         self.rewards = []
         self.next_states = []
         self.has_trained = False
+
+        self.epochs_per_train = 30
+        self.n_iteration = int(- np.log(1000) / np.log(self.gamma))
 
     def save(self, name):
         path = os.path.join("saved_agents", name)
@@ -125,23 +130,24 @@ class OfflineAgent(LearningAgent):
         self.remember(self.last_state, self.action, reward, next_state)
 
     def train_network(self):
-        self.epochs_per_train = 30
-        self.n_iteration = int(- np.log(1000) / np.log(self.gamma))
 
         rewards = np.array(self.rewards)
+        next_states = np.array(self.next_states)
 
         print("dataset size: ", len(self.action_states))
 
-        next_states0 = np.zeros((self.next_states.shape[0], self.next_states.shape[1] + 1))
-        next_states1 = np.zeros((self.next_states.shape[0], self.next_states.shape[1] + 1))
+        print(type(self.next_states))
 
-        next_states0[:, :-1] = self.next_states.copy()
-        next_states1[:, :-1] = self.next_states.copy()
+        next_states0 = np.zeros((next_states.shape[0], next_states.shape[1] + 1))
+        next_states1 = np.zeros((next_states.shape[0], next_states.shape[1] + 1))
+
+        next_states0[:, :-1] = next_states.copy()
+        next_states1[:, :-1] = next_states.copy()
 
         next_states0[:, -1] = 0
         next_states1[:, -1] = 1
 
-        q_values = np.zeros((self.next_states.shape[0], 2))
+        q_values = np.zeros((next_states.shape[0], 2))
 
         for j in range(self.n_iteration):
             print("iteration number ", j)

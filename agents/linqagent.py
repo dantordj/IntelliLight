@@ -22,6 +22,8 @@ class LinQAgent(LearningAgent):
         if features is None:
             self.features = ["count_incoming"]
 
+        print(self.features)
+
         # parameters
 
         self.observe_steps = 1000
