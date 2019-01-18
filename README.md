@@ -1,5 +1,9 @@
 # Final project for Reinforcement Learning course. MVA-2018
 
+## Acknowledgments
+Please note that some of the functions to communicate with the SUMO agent come from the code this repository: wingsweihua/IntelliLight.
+The rest of the implementation (agents, training, etc) is original.
+
 ## Code Usage
 Please find the project report in the `report.pdf` file.
 
