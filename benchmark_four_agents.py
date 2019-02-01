@@ -1,12 +1,9 @@
-from training import run_agent, train_agent, train_four_agents, run_four_agents
-from agents.linqagent import LinQAgent
+from training import run_four_agents
 from agents.agents import ConstantAgent, SimpleAgent
 from agents.multi_agent_wrapper import MultiAgentWrapper
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 
-torch.manual_seed(5)
 np.random.seed(2)
 
 rewards = []
@@ -22,7 +19,7 @@ for factor in factors:
         agent_class=my_agent_class, factor=factor
     )
 
-    reward, n_switches, avg_travel_time = run_four_agents(agent=agent, use_gui=False, max_t=5000)
+    reward, n_switches, avg_travel_time = run_four_agents(agent=agent, use_gui=True, max_t=5000)
     rewards.append(reward)
     travel_times.append(avg_travel_time)
 
